@@ -18,18 +18,36 @@ A modern web application built with React, Supabase, LangChain, and AWS Amplify.
    yarn install
    ```
 
-3. Copy the environment variables:
+3. Set up environment variables:
    ```bash
-   cp .env.example .env
+   # For development
+   cp .env.example .env.development
+   # For production
+   cp .env.example .env.production
    ```
 
-4. Update the `.env` file with your credentials:
-   - Supabase credentials from your Supabase project
+4. Update the environment files:
+   - `.env.development`: Development Supabase credentials
+   - `.env.production`: Production Supabase credentials
 
 5. Start the development server:
    ```bash
    yarn dev
    ```
+
+## Development vs Production
+
+This project uses different environments for development and production:
+
+- **Development**:
+  - Uses `.env.development`
+  - Run with `yarn dev`
+  - Build with `yarn build:dev`
+
+- **Production**:
+  - Uses `.env.production`
+  - Build with `yarn build`
+  - Preview with `yarn preview`
 
 ## Deployment
 
@@ -37,7 +55,7 @@ This project is configured for deployment with AWS Amplify. Follow these steps:
 
 1. Push your changes to your repository
 2. Connect your repository to AWS Amplify Console
-3. Configure environment variables in Amplify Console
+3. Configure production environment variables in Amplify Console
 
 ## Project Structure
 
