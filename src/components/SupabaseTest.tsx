@@ -22,7 +22,7 @@ export function SupabaseTest() {
     async function testConnection() {
       try {
         // Simple health check using auth
-        const { data, error } = await supabase.auth.getSession();
+        const { error } = await supabase.auth.getSession();
         
         if (error) {
           throw new Error(`Supabase Error: ${error.message}`);
