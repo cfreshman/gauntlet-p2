@@ -10,14 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@aws-amplify/ui-react": "^5.3.2",
     "@supabase/supabase-js": "^2.39.3",
-    "aws-amplify": "^5.3.12",
+    "@tailwindcss/forms": "^0.5.7",
     "langchain": "^0.1.12",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.21.3",
-    "@tailwindcss/forms": "^0.5.7",
     "tailwindcss": "^3.4.1"
   },
   "devDependencies": {

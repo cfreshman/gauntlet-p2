@@ -15,7 +15,7 @@ A modern web application built with React, Supabase, LangChain, and AWS Amplify.
 1. Clone the repository
 2. Install dependencies:
    ```bash
-   npm install
+   yarn install
    ```
 
 3. Copy the environment variables:
@@ -25,21 +25,19 @@ A modern web application built with React, Supabase, LangChain, and AWS Amplify.
 
 4. Update the `.env` file with your credentials:
    - Supabase credentials from your Supabase project
-   - AWS Amplify configuration from your AWS Console
 
 5. Start the development server:
    ```bash
-   npm run dev
+   yarn dev
    ```
 
 ## Deployment
 
 This project is configured for deployment with AWS Amplify. Follow these steps:
 
-1. Install and configure the AWS Amplify CLI
-2. Initialize your Amplify project
-3. Push your changes to your repository
-4. Connect your repository to AWS Amplify Console
+1. Push your changes to your repository
+2. Connect your repository to AWS Amplify Console
+3. Configure environment variables in Amplify Console
 
 ## Project Structure
 
@@ -58,6 +56,3 @@ Required environment variables:
 
 - `VITE_SUPABASE_URL`: Your Supabase project URL
 - `VITE_SUPABASE_ANON_KEY`: Your Supabase anonymous key
-- `VITE_AWS_REGION`: AWS region
-- `VITE_USER_POOL_ID`: Cognito User Pool ID
-- `VITE_USER_POOL_CLIENT_ID`: Cognito Client ID
