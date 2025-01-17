@@ -6,8 +6,8 @@ import { Input } from '../components/ui/input';
 import { Card, CardContent, CardFooter } from '../components/ui/card';
 
 export function Signup() {
-  const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -37,18 +37,18 @@ export function Signup() {
             )}
             <div className="space-y-2">
               <Input
-                type="email"
-                placeholder="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoCapitalize="none"
-                disabled={loading}
-              />
-              <Input
                 type="text"
                 placeholder="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
+                autoCapitalize="none"
+                disabled={loading}
+              />
+              <Input
+                type="email"
+                placeholder="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 autoCapitalize="none"
                 disabled={loading}
               />
@@ -65,12 +65,9 @@ export function Signup() {
             <Button className="w-full" disabled={loading}>
               {loading ? 'signing up...' : 'sign up'}
             </Button>
-            <Link
-              to="/login"
-              className="text-sm text-muted-foreground hover:text-primary"
-            >
-              have an account?
-            </Link>
+            <Button variant="ghost" asChild className="w-full">
+              <Link to="/login">have an account?</Link>
+            </Button>
           </CardFooter>
         </form>
       </Card>

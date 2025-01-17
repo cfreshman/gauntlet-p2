@@ -56,12 +56,14 @@ export function Login() {
             <Button className="w-full" disabled={loading}>
               {loading ? 'signing in...' : 'sign in'}
             </Button>
-            <Link
-              to="/signup"
-              className="text-sm text-muted-foreground hover:text-primary"
-            >
-              need an account?
-            </Link>
+            <div className="space-y-2">
+              <Button variant="ghost" asChild className="w-full">
+                <Link to="/reset-password">forgot password?</Link>
+              </Button>
+              <Button variant="ghost" asChild className="w-full">
+                <Link to="/signup">need an account?</Link>
+              </Button>
+            </div>
           </CardFooter>
         </form>
       </Card>

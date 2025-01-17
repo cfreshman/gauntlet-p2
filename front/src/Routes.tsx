@@ -1,10 +1,12 @@
-import { Navigate, Routes as RouterRoutes, Route } from 'react-router-dom';
+import { Navigate, Routes as RouterRoutes, Route, useLocation } from 'react-router-dom';
 import { useAuth } from './lib/hooks/useAuth';
 import { Login } from './pages/Login';
 import { Signup } from './pages/Signup';
 import { Settings } from './pages/Settings';
 import { Landing } from './pages/Landing';
 import { Dashboard } from './pages/Dashboard';
+import { ResetPassword } from './pages/ResetPassword';
+import { UpdatePassword } from './pages/UpdatePassword';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -61,6 +63,16 @@ export function Routes() {
       <Route path="/settings" element={
         <RequireAuth>
           <Settings />
+        </RequireAuth>
+      } />
+      <Route path="/reset-password" element={
+        <RequireGuest>
+          <ResetPassword />
+        </RequireGuest>
+      } />
+      <Route path="/update-password" element={
+        <RequireAuth>
+          <UpdatePassword />
         </RequireAuth>
       } />
     </RouterRoutes>
