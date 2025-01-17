@@ -176,10 +176,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { session } = data
       if (!session) throw 'invalid credentials'
 
+      // Set the session in Supabase client
+      await supabase.auth.setSession(session)
+
       // Update auth state
       setUser(session.user)
       if (session.user) {
-        getProfile(session.user.id)
+        await getProfile(session.user.id)
       }
 
     } catch (error) {

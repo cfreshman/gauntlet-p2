@@ -16,9 +16,9 @@ Allows users to sign in with username instead of email. The function:
 brew install supabase/tap/supabase
 ```
 
-2. Set environment variables in `.env.development`:
+2. Set up environment variables in `.env.development`:
 ```bash
-PLATFORM_URL=your_supabase_project_url
+PLATFORM_URL=your_project_url
 PLATFORM_KEY=your_service_role_key
 ```
 
@@ -31,27 +31,52 @@ supabase secrets set --env-file .env.development --project-ref your_project_ref
 supabase functions deploy sign-in-with-username --project-ref your_project_ref
 ```
 
-The function will be available at:
-`https://[PROJECT_REF].supabase.co/functions/v1/sign-in-with-username`
+### Production Setup
 
-### Testing the Function
+1. Set up environment variables in `.env.production`
 
+2. Deploy to production:
 ```bash
-# Test with curl
-curl -X POST 'https://[PROJECT_REF].supabase.co/functions/v1/sign-in-with-username' \
--H "Content-Type: application/json" \
--H "Authorization: Bearer your_anon_key" \
--d '{"username":"test", "password":"test"}'
+# Set environment variables
+supabase secrets set --env-file .env.production --project-ref your_prod_project_ref
+
+# Deploy function
+supabase functions deploy sign-in-with-username --project-ref your_prod_project_ref
 ```
 
-### Function Details
+### Example Usage
 
-The function handles:
-- Username to email lookup
-- Password verification
-- CORS headers for browser access
-- Proper error responses
-- Session management
+```bash
+# Success case
+curl -X POST 'https://[PROJECT_REF].supabase.co/functions/v1/sign-in-with-username' \
+-H "Content-Type: application/json" \
+-d '{"username":"test", "password":"test123"}'
+
+# Response:
+{
+  "session": {
+    "access_token": "...",
+    "refresh_token": "...",
+    "user": {
+      "id": "...",
+      "email": "test@example.com"
+    }
+  }
+}
+
+# Error case (wrong password)
+curl -X POST 'https://[PROJECT_REF].supabase.co/functions/v1/sign-in-with-username' \
+-H "Content-Type: application/json" \
+-d '{"username":"test", "password":"wrong"}'
+
+# Response:
+{
+  "error": {
+    "message": "invalid credentials",
+    "status": 401
+  }
+}
+```
 
 ### Directory Structure
 ```
@@ -64,11 +89,6 @@ back/
   .env.development    # Development environment variables
   .env.production     # Production environment variables
 ```
-
-### Environment Variables
-
-- `PLATFORM_URL`: Your Supabase project URL (from Project Settings -> API)
-- `PLATFORM_KEY`: Your Supabase service role key (from Project Settings -> API)
 
 ### Important Notes
 
