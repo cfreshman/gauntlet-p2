@@ -1,0 +1,32 @@
+# UI Text Rules
+- All UI text should be lowercase, except for proper nouns (names, brands, etc.)
+- Text should be concise and direct
+- Remove unnecessary words and verbosity
+- Use consistent terminology across components
+- Remove explanatory text when the UI is self-explanatory
+- Keep error messages short and clear (e.g., "invalid credentials")
+
+# Examples
+✅ "sign in" instead of "Sign In" or "Login"
+✅ "username" instead of "Enter your username"
+✅ "invalid credentials" instead of "The username or password you entered is incorrect"
+✅ "need an account?" instead of "Don't have an account? Sign up"
+
+# Component Naming
+- Keep React component names in PascalCase (e.g., Login, Button)
+- Keep file names in kebab-case (e.g., sign-up.tsx)
+- Keep CSS class names in kebab-case
+
+# Spacing
+- Use minimal spacing between elements (e.g., space-y-2)
+- Keep forms compact (max-width: 320px)
+- Use consistent padding (e.g., pt-4 for card content)
+- Reduce vertical whitespace in forms
+- Keep header height compact (h-12)
+- Use small text (text-sm) for secondary information
+
+# Button Rules
+- Use small buttons where possible (size="sm")
+- Keep button text concise
+- Use ghost variant for secondary actions
+- Use consistent height for header buttons (h-7) 
