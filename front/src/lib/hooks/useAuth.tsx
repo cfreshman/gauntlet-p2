@@ -153,16 +153,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function signIn(username: string, password: string) {
     try {
-      const { data, error } = await supabase.rpc(
-        'sign_in_with_username',
-        { username, password }
-      );
+      // Call our Edge Function instead of direct DB function
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sign-in-with-username`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({ username, password })
+        }
+      )
 
-      if (error || data?.error) {
-        throw 'invalid credentials';
+      const data = await response.json()
+      
+      if (data.error) {
+        throw data.error.message
       }
-    } catch {
-      throw 'invalid credentials';
+
+      // Set the session from the response
+      const { session } = data
+      if (!session) throw 'invalid credentials'
+
+      // Update auth state
+      setUser(session.user)
+      if (session.user) {
+        getProfile(session.user.id)
+      }
+
+    } catch (error) {
+      if (typeof error === 'string') {
+        throw error
+      }
+      throw 'invalid credentials'
     }
   }
 

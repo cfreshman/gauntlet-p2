@@ -1,62 +1,33 @@
-# Logs
-logs
-*.log
+# dependencies
+node_modules
+.pnp
+.pnp.js
+
+# testing
+coverage
+
+# production
+dist
+build
+
+# misc
+.DS_Store
+*.pem
+.env*
+!.env.example
+
+# debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
 
-# Dependencies
-node_modules
-/.pnp
-.pnp.js
+# local env files
+.env*.local
 
-# Testing
-/coverage
-
-# Production
-/build
-dist
-dist-ssr
-*.local
-
-# Environment files
-.env
-.env.local
-.env.development
-.env.development.local
-.env.test.local
-.env.production
-.env.production.local
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-!.vscode/launch.json
-!.vscode/settings.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# Temporary files
-*.tmp
-*.temp
-.cache
-.eslintcache
-
-# TypeScript
+# typescript
 *.tsbuildinfo
+next-env.d.ts
 
-# Yarn
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/sdks
-!.yarn/versions
-.pnp.*
+# IDE
+.idea
+.vscode

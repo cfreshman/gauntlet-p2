@@ -52,25 +52,33 @@ returns json
 language plpgsql
 security definer
 set search_path = public
+volatile
 as $$
 declare
   email text;
   result json;
 begin
-  -- Get email for username
+  -- Get email for username (case insensitive)
   select p.email into email
   from profiles p
-  where p.username = sign_in_with_username.username;
+  where lower(p.username) = lower(sign_in_with_username.username);
 
   if email is null then
-    return json_build_object('error', 'invalid credentials');
+    return json_build_object(
+      'error', json_build_object(
+        'message', 'invalid credentials',
+        'status', 401
+      )
+    );
   end if;
 
-  -- Attempt sign in
-  select auth.sign_in_with_password(email, password) into result;
-  return result;
+  -- Attempt sign in and return raw result
+  return auth.sign_in_with_password(email, password);
 end;
 $$;
+
+comment on function sign_in_with_username(text, text) is '@proc_name sign_in_with_username
+Allows users to sign in with username instead of email';
 
 -- Create realtime publication
 create publication supabase_realtime;
@@ -96,4 +104,8 @@ begin
   set email = new_email
   where id = user_id;
 end;
-$$; 
+$$;
+
+-- Grant RPC permissions
+grant execute on function sign_in_with_username(text, text) to anon;
+grant execute on function update_email_admin(uuid, text) to authenticated; 
