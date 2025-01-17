@@ -9,6 +9,21 @@ A modern web application built with React, Supabase, LangChain, and AWS Amplify.
 - LangChain for AI/ML capabilities
 - AWS Amplify for deployment
 - Tailwind CSS for styling
+- Shadcn UI components
+
+## Database Setup
+
+1. Create a new project in [Supabase](https://supabase.com)
+
+2. Copy the SQL from `supabase/migrations/20240101000000_init.sql` and run it in the Supabase SQL editor:
+   - This creates the profiles table
+   - Sets up Row Level Security
+   - Creates functions for username-based sign in
+   - Creates function for admin email updates
+
+3. Enable email auth in Authentication > Providers:
+   - Disable "Confirm email" if you want instant sign-ups
+   - Keep "Secure email change" disabled to allow instant email updates
 
 ## Getting Started
 
@@ -74,3 +89,4 @@ Required environment variables:
 
 - `VITE_SUPABASE_URL`: Your Supabase project URL
 - `VITE_SUPABASE_ANON_KEY`: Your Supabase anonymous key
+
