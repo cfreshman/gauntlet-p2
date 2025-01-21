@@ -43,13 +43,18 @@ function RequireGuest({ children }: { children: React.ReactNode }) {
 }
 
 function Home() {
-  const { user, loading } = useAuth();
+  const { user, loading, profile } = useAuth();
   
   if (loading) {
     return null; // or a loading spinner
   }
-  
-  return user ? <Dashboard /> : <Landing />;
+
+  if (!user) {
+    return <Landing />;
+  }
+
+  // Show role-specific dashboard for authenticated users
+  return <Dashboard />;
 }
 
 export function Routes() {

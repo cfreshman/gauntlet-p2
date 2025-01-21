@@ -1,202 +1,136 @@
-# UI Text Rules
-- All UI text should be lowercase, except for proper nouns (names, brands, etc.)
-- Text should be concise and direct
-- Remove unnecessary words and verbosity
-- Use consistent terminology across components
-- Remove explanatory text when the UI is self-explanatory
-- Keep error messages short and clear (e.g., "invalid credentials")
+# .cursorrules
 
-# Examples
-✅ "sign in" instead of "Sign In" or "Login"
-✅ "username" instead of "Enter your username"
-✅ "invalid credentials" instead of "The username or password you entered is incorrect"
-✅ "need an account?" instead of "Don't have an account? Sign up"
+## project instructions
 
-# Component Naming
-- Keep React component names in PascalCase (e.g., Login, Button)
-- Keep file names in kebab-case (e.g., sign-up.tsx)
-- Keep CSS class names in kebab-case
+**goal**  
+build a modern customer support system (crm) with generative ai enhancements. the system handles ticket creation, assignment, and collaboration, then integrates ai to automate and scale support workflows.
 
-# Spacing
-- Use minimal spacing between elements (e.g., space-y-2)
-- Keep forms compact (max-width: 320px)
-- Use consistent padding (e.g., pt-4 for card content)
-- Reduce vertical whitespace in forms
-- Keep header height compact (h-12)
-- Use small text (text-sm) for secondary information
+**phases**  
+1. **week 1 mvp (by jan 21, 2025)**  
+   - functional baseline crm  
+   - roles: customer, worker, manager  
+   - ticket creation & management with row-level security  
+   - minimal ui for listing and updating tickets  
+   - keep existing patterns; do not remove or break anything  
 
-# Button Rules
-- Use small buttons where possible (size="sm")
-- Keep button text concise
-- Use ghost variant for secondary actions
-- Use consistent height for header buttons (h-7) 
+2. **week 1 final (by jan 24, 2025)**  
+   - polish the existing crm  
+   - ensure stable team management, comment system, assignments  
+   - fix major bugs (unknown username, visibility issues)  
+   - deliver a 5-min walkthrough video  
 
-# Core Rules
-- Never remove working code or functionality
-- Never modify code beyond requested changes
-- Never "improve" or "clean up" working code
-- Keep all security measures intact
-- Follow existing patterns exactly
+3. **week 2 mvp (by jan 27, 2025)**  
+   - introduce basic ai (auto-route or auto-reply)  
+   - maintain user roles & rls  
+   - any ai logic must be optional/toggleable  
 
-# Code Changes
-- Only make explicitly requested changes
-- Show enough context around changes
-- Use correct file paths
-- Keep working error handling
-- Maintain existing configs
-- Deploy after changes
+4. **week 2 final (by jan 31, 2025)**  
+   - refine ai features (knowledge-based suggestions, escalation, etc.)  
+   - ensure human-in-the-loop oversight  
+   - deliver final demo showing ai-driven workflow  
 
-# File Structure
-- Keep existing organization
-- Maintain working imports
-- Preserve file relationships
-- Follow naming conventions
+**important notes**  
+- some features may or may not be implemented yet. only implement or modify code if specifically asked.  
+- maintain supabase-based backend, rls, and edge functions.  
+- do not remove or rewrite working code unless necessary for new features.
 
-# Database Rules
-- Keep working tables/schemas
-- Preserve working functions
-- Maintain working triggers
-- Keep working RLS policies
-- Verify dependencies before changes
+---
 
-# Edge Functions
-- Match existing patterns
-- Use parameterized queries
-- Keep CORS configurations
-- Deploy with project ref
-- Check all dependencies
+## ui text
+- lowercase except proper nouns
+- concise and direct
+- remove unnecessary words
+- consistent terminology
+- short, clear error messages (e.g., "invalid credentials")
 
-# Example: What Not To Do
-❌ Removing any working code
-❌ Changing working patterns
-❌ "Cleaning up" existing code
-❌ Breaking dependencies
-❌ Modifying security
+### examples
+- ✅ "sign in"  
+- ✅ "username"  
+- ✅ "invalid credentials"  
+- ✅ "need an account?"  
 
-# Example: Correct Steps
-✅ Check all dependencies first
-✅ Verify code usage
-✅ Keep working functionality
-✅ Follow existing patterns
-✅ Test after changes
+---
 
-# Current Progress
-## Working Flows ✅
-- First sign in creates manager role
-- Manager can create team
-- Manager can invite workers
-- Worker signup + team assignment
-- Customer signup
-- Customer ticket creation
-- Worker ticket list with real-time updates
-- Worker ticket assignment
-- Worker commenting
-- Customer & manager can see ticket updates
+## component naming
+- react components: PascalCase (e.g., `TicketForm`)
+- file names: kebab-case (e.g., `ticket-form.tsx`)
+- css classes: kebab-case
 
-## Known Issues ❌
-- Comment username shows as "unknown"
-- Workers cannot see team members in settings
-- Need to verify:
-  - Email visibility/security
-  - Ticket permissions
-  - Team management permissions
-  - Profile update permissions
+---
 
-# Project Requirements
-### **Building a Modern Customer Support System**
+## spacing
+- minimal vertical spacing (`space-y-2`)
+- forms max-width: 320px
+- consistent padding (`pt-4`)
+- compact header (`h-12`)
+- small text (`text-sm`) for secondary info
 
-Creating a modern customer support system requires a balanced focus on technical architecture, user experience, and customer-facing features. This document outlines the core functionalities required for a robust, scalable, and adaptable system.
+---
 
-### **Core Architecture**
+## buttons
+- default `size="sm"`
+- keep text short
+- `variant="ghost"` for secondary actions
+- header buttons: `h-7`
 
-#### **Ticket Data Model**
+---
 
-The ticket system is central to AutoCRM, treated as a living document that captures the entire customer interaction journey. Key components include:
+## core rules
+- **never remove working code**  
+- **never modify code beyond requested changes**  
+- **never "clean up" working code** unless explicitly asked  
+- preserve all security measures  
+- follow existing patterns (rls, migrations, edge functions)
+- do not break role-based workflows
 
-* **Standard Identifiers & Timestamps**: Basic fields like ticket ID, creation date, and status updates.  
-* **Flexible Metadata**:  
-  * **Dynamic Status Tracking**: Reflects team workflows.  
-  * **Priority Levels**: Manage response times effectively.  
-  * **Custom Fields**: Tailor tickets to specific business needs.
-  * **Tags**: Enable categorization and automation.  
-  * **Internal Notes**: Facilitate team collaboration.  
-  * **Full Conversation History**: Includes interactions between customers and team members.
+---
 
-### **API-First Design**
+## code changes
+- only do what is explicitly requested
+- show enough context
+- use correct file paths
+- keep existing error handling
+- maintain configs
+- deploy after changes
 
-An API-first approach ensures accessibility and scalability, enabling:
+---
 
-* **Integration**: Connect seamlessly with websites, applications, and external tools.  
-* **Automation**: Simplify routine tasks and workflows.  
-* **Analytics**: Support robust reporting and insights.
+## file structure
+- preserve existing organization
+- do not break imports or references
+- follow naming conventions
 
-**API Features:**
-* **Synchronous Endpoints**: Handle immediate operations.  
-* **Granular Permissions**: Ensure secure integrations using API key authentication.
+---
 
-### **Employee Interface**
+## database
+- keep working tables/schemas
+- preserve triggers/functions
+- keep rls policies
+- verify dependencies before changes
 
-#### **Queue Management**
-* **Customizable Views**: Prioritize tickets effectively.  
-* **Real-Time Updates**: Reflect changes instantly.  
-* **Quick Filters**: Focus on ticket states and priorities.  
+---
 
-#### **Ticket Handling**
-* **Customer History**: Display detailed interaction logs.  
-* **Rich Text Editing**: Craft polished responses.  
-* **Quick Responses**: Use macros and templates.  
-* **Collaboration Tools**: Share internal notes and updates.
+## edge functions
+- follow existing patterns
+- parameterized queries
+- keep cors configs
+- deploy with project ref
+- check dependencies
 
-### **Administrative Control**
+---
 
-#### **Team Management**
-* Create and manage teams with specific focus areas.  
-* Assign agents based on skills.  
-* Set coverage schedules and monitor team performance.
+## do not
+- ❌ remove working code
+- ❌ change working patterns
+- ❌ "clean up" existing code
+- ❌ break dependencies
+- ❌ modify security
 
-### **Customer Features**
+---
 
-#### **Customer Portal**
-* **Ticket Tracking**: Allow customers to view, update, and track their tickets.  
-* **History of Interactions**: Display previous communications and resolutions.  
-* **Secure Login**: Ensure privacy with authentication.
-
-#### **Communication Tools**
-* **Email Integration**: Allow ticket creation and updates directly via email.
-
-#### **Feedback and Engagement**
-* **Issue Feedback**: Collect feedback after ticket resolution.  
-* **Ratings System**: Let customers rate their support experience.
-
-### **NON-ESSENTIAL Features**
-The following features are considered non-essential and can be implemented later if needed:
-
-#### **Schema Flexibility** [NON-ESSENTIAL]
-* Easy field addition
-* Migration system
-* Audit logging
-* Archival strategies
-
-#### **Performance Optimization** [NON-ESSENTIAL]
-* Caching
-* Query optimization
-* Scalable storage
-* Regular maintenance
-
-#### **Multi-Channel Support** [NON-ESSENTIAL]
-* Mobile-friendly design
-* Omnichannel integration
-* Support for chat, social media, SMS
-
-#### **Advanced Features** [NON-ESSENTIAL]
-* AI-powered chatbots
-* Personalized suggestions
-* Proactive notifications
-* Multilingual support
-* Web widgets
-* Live chat
-* Interactive tutorials
-* Knowledge base
-* Self-service tools
-
-Start by targeting "You should have a working CRM app with at least ticket entities and creation" - this includes roles so we can create tickets as customers and 'work' on them as workers/managers
+## correct steps
+- ✅ check dependencies first
+- ✅ verify usage
+- ✅ keep working functionality
+- ✅ follow existing patterns
+- ✅ test after changes

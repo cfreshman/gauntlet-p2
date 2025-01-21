@@ -45,6 +45,7 @@ export function TicketList() {
   const sortField = (searchParams.get('sort') as SortField) || 'created_at'
   const sortOrder = (searchParams.get('order') as SortOrder) || 'desc'
   const assignedFilter = searchParams.get('assigned') || null
+  const closedAfter = searchParams.get('closed_after') || null
 
   // Update URL params helper
   const updateParams = (updates: Record<string, string | null>) => {
@@ -126,13 +127,22 @@ export function TicketList() {
       // Apply filters
       if (statusFilter === 'active') {
         query = query.neq('status', 'closed')
+      } else if (statusFilter === 'closed' && closedAfter === '7d') {
+        // Get date 7 days ago
+        const sevenDaysAgo = new Date()
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+        query = query
+          .eq('status', 'closed')
+          .gte('updated_at', sevenDaysAgo.toISOString())
       } else if (statusFilter !== 'all') {
         query = query.eq('status', statusFilter)
       }
       if (priorityFilter !== 'all') {
         query = query.eq('priority', priorityFilter)
       }
-      if (assignedFilter) {
+      if (assignedFilter === 'null') {
+        query = query.is('assigned_to', null)
+      } else if (assignedFilter) {
         query = query.eq('assigned_to', assignedFilter)
       }
 
@@ -161,10 +171,13 @@ export function TicketList() {
           <h1 className="text-2xl font-bold">
             {viewMode === 'templates' ? 'templates' : 'tickets'}
           </h1>
-          {assignedFilter && assignedFilter !== user?.id && (
+          {assignedFilter && assignedFilter !== user?.id && assignedFilter !== 'null' && (
             <span className="text-2xl">
               assigned to {usernames[assignedFilter] || 'unknown'}
             </span>
+          )}
+          {assignedFilter === 'null' && (
+            <span className="text-2xl">unassigned</span>
           )}
         </div>
         <div className="flex gap-2">
@@ -184,91 +197,93 @@ export function TicketList() {
         </div>
       </div>
 
-      <div className="flex gap-4 mb-4">
-        <div>
-          <label className="block text-sm text-gray-500 mb-1">status</label>
-          <Select 
-            value={statusFilter} 
-            onValueChange={(value) => updateParams({ status: value === 'all' ? null : value })}
-          >
-            <SelectTrigger className="w-[120px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">all</SelectItem>
-              <SelectItem value="active">active</SelectItem>
-              <SelectItem value="new">new</SelectItem>
-              <SelectItem value="open">open</SelectItem>
-              <SelectItem value="pending">pending</SelectItem>
-              <SelectItem value="resolved">resolved</SelectItem>
-              <SelectItem value="closed">closed</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      {profile?.role !== 'customer' && (
+        <div className="flex gap-4 mb-4">
+          <div>
+            <label className="block text-sm text-gray-500 mb-1">status</label>
+            <Select 
+              value={statusFilter} 
+              onValueChange={(value) => updateParams({ status: value === 'all' ? null : value })}
+            >
+              <SelectTrigger className="w-[120px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">all</SelectItem>
+                <SelectItem value="active">active</SelectItem>
+                <SelectItem value="new">new</SelectItem>
+                <SelectItem value="open">open</SelectItem>
+                <SelectItem value="pending">pending</SelectItem>
+                <SelectItem value="resolved">resolved</SelectItem>
+                <SelectItem value="closed">closed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-        <div>
-          <label className="block text-sm text-gray-500 mb-1">priority</label>
-          <Select 
-            value={priorityFilter} 
-            onValueChange={(value) => updateParams({ priority: value === 'all' ? null : value })}
-          >
-            <SelectTrigger className="w-[120px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">all</SelectItem>
-              <SelectItem value="low">low</SelectItem>
-              <SelectItem value="medium">medium</SelectItem>
-              <SelectItem value="high">high</SelectItem>
-              <SelectItem value="urgent">urgent</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+          <div>
+            <label className="block text-sm text-gray-500 mb-1">priority</label>
+            <Select 
+              value={priorityFilter} 
+              onValueChange={(value) => updateParams({ priority: value === 'all' ? null : value })}
+            >
+              <SelectTrigger className="w-[120px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">all</SelectItem>
+                <SelectItem value="low">low</SelectItem>
+                <SelectItem value="medium">medium</SelectItem>
+                <SelectItem value="high">high</SelectItem>
+                <SelectItem value="urgent">urgent</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-        <div>
-          <label className="block text-sm text-gray-500 mb-1">sort by</label>
-          <Select 
-            value={sortField} 
-            onValueChange={(value) => updateParams({ sort: value })}
-          >
-            <SelectTrigger className="w-[120px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="created_at">created</SelectItem>
-              <SelectItem value="priority">priority</SelectItem>
-              <SelectItem value="status">status</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+          <div>
+            <label className="block text-sm text-gray-500 mb-1">sort by</label>
+            <Select 
+              value={sortField} 
+              onValueChange={(value) => updateParams({ sort: value })}
+            >
+              <SelectTrigger className="w-[120px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="created_at">created</SelectItem>
+                <SelectItem value="priority">priority</SelectItem>
+                <SelectItem value="status">status</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-        <div>
-          <label className="block text-sm text-gray-500 mb-1">order</label>
-          <Select 
-            value={sortOrder} 
-            onValueChange={(value) => updateParams({ order: value })}
-          >
-            <SelectTrigger className="w-[120px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="asc">ascending</SelectItem>
-              <SelectItem value="desc">descending</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+          <div>
+            <label className="block text-sm text-gray-500 mb-1">order</label>
+            <Select 
+              value={sortOrder} 
+              onValueChange={(value) => updateParams({ order: value })}
+            >
+              <SelectTrigger className="w-[120px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="asc">ascending</SelectItem>
+                <SelectItem value="desc">descending</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-        <div>
-          <div className="block text-sm text-gray-500 mb-1">&nbsp;</div>
-          <div className="flex items-center gap-2 h-9">
-            <Switch
-              checked={user ? assignedFilter === user.id : false}
-              onCheckedChange={toggleAssigned}
-            />
-            <span className="text-sm">assigned to me</span>
+          <div>
+            <div className="block text-sm text-gray-500 mb-1">&nbsp;</div>
+            <div className="flex items-center gap-2 h-9">
+              <Switch
+                checked={user ? assignedFilter === user.id : false}
+                onCheckedChange={toggleAssigned}
+              />
+              <span className="text-sm">assigned to me</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         <div className="divide-y divide-gray-200">

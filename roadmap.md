@@ -1,105 +1,123 @@
-# Auto-CRM Roadmap
+# roadmap.md
 
-## Currently Implemented ✅
+## AutoCRM Roadmap
 
-### Auth & Users
-- Full authentication flow (signup, signin, password reset)
-- Role system (customer, worker, manager)
-- Profile management
-- Team creation and management
-- Invite system with magic links
-- Worker view of team members
+Below is the simplified roadmap to guide development across two weeks. Each week has an MVP milestone and a final milestone.
 
-### Tickets
-- Basic CRUD operations
-- Status and priority management
-- Assignment system
-  - Managers can assign to workers or themselves
-  - Workers can assign to themselves or their manager
-  - Workers can assign unassigned tickets
-- Comment system with real-time updates
-- Permission-based access control
-- Username display in comments
-- All roles can create tickets
+---
 
-### Security
-- Row Level Security (RLS) policies
-- Edge Functions for sensitive operations
-  - Ticket updates (priority, assignment)
-  - Profile updates
-  - Team management
-- Team-based access control
-- Role-based permissions
+### **Currently Implemented** ✅
+- **Auth & Users**  
+  - Sign up, sign in, password reset  
+  - Role system: customer, worker, manager  
+  - Profile management  
+  - Team creation and management  
+  - Invite system (magic links)  
+  - Workers can see team members  
 
-### Database
-- Core tables: profiles, teams, tickets, comments
-- Prepared schemas for: custom fields, tags, skills
-- Team invite system
-- Real-time enabled tables
+- **Tickets**  
+  - Basic CRUD (create, read, update, delete)  
+  - Status and priority management  
+  - Assignment system (managers ⇄ workers, self-assign)  
+  - Comment system with real-time updates  
+  - Permission-based access  
+  - Usernames displayed in comments  
+  - All roles can create tickets  
 
-### UI
-- Modern, clean interface
-- Responsive layouts
-- Real-time updates
-- Core pages: auth, tickets, settings
-- Team management interface
+- **Security**  
+  - Row Level Security (RLS) policies in the database  
+  - Edge Functions for sensitive operations (ticket updates, profile updates, team management)  
+  - Team- and role-based access control  
 
-## Needs Implementation ❌
+- **Database**  
+  - Core tables: `profiles`, `teams`, `tickets`, `comments`  
+  - Additional schemas prepared for: custom fields, tags, skills  
+  - Team invite flow  
+  - Real-time enabled tables  
 
-### Phase 1: Core Enhancements
-✅ Security audit completed:
-- Email visibility: Properly restricted
-- Ticket permissions: Properly implemented
-- Team management permissions: Properly implemented  
-- Profile update permissions: Properly implemented
+- **UI**  
+  - Responsive layouts  
+  - Real-time ticket updates  
+  - Key pages: auth, tickets, settings  
+  - Team management interface  
 
-### Phase 2: Ticket Features
-- Custom fields implementation
-  - UI for field management (managers add fields to existing tickets)
-  - Template system for reusing field configurations
-  - Form-like experience when creating from templates
-  - Field types (text, number, select)
-  - Validation system
-- Tag system
-  - Tag management UI
-  - Tag filtering
-- Internal notes
-  - Worker/manager-only comments
-  - Visual distinction
+---
 
-### Phase 3: Team Features
-- Skills system
-  - Skill definition
-  - Worker skill tracking
-  - Skill-based routing
-- Team visibility
-  - Availability tracking
-  - Workload management
+## Week 1
 
-### Phase 4: Customer Features
-- Feedback system
-  - Post-resolution surveys
-  - Rating implementation
-- Email integration
-  - Notifications
-  - Email-to-ticket
-- Rich text editing
-  - Comment formatting
-  - File attachments
+### **MVP (Due: Jan 21, 2025)**
+1. **Functional Baseline CRM**  
+   - Confirm that tickets can be created, updated, and closed  
+   - Ensure role-based permissions (customer, worker, manager)  
+   - Validate RLS policies and edge functions remain intact
 
-### Phase 5: Organization
-- Advanced views
-  - Custom filters
-  - Saved searches
-  - Sort by any field
-- Basic reporting
-  - Ticket metrics
-  - Team performance
-  - Custom field analytics
+2. **Minimal Enhancements**  
+   - Basic queue or list view for tickets  
+   - Basic filtering (by status or priority)  
+   - Fix any blocking issues (e.g., unknown username in comments)
 
-## Non-Essential Features
-- Caching & optimization
-- Multi-channel support
-- AI/chatbot features
-- Knowledge base
-- Self-service portal 
+3. **Deployment**  
+   - Working, deployable application  
+   - Publicly accessible URL
+
+### **Final (Due: Jan 24, 2025)**
+1. **Core Enhancements**  
+   - Polish UI for ticket assignment, status changes, and comments  
+   - Ensure team management permissions are correct  
+   - Implement or verify minimal “internal notes” concept (if requested)  
+   - Confirm security: email visibility, RLS coverage
+
+2. **Customer Features**  
+   - Validate that customers can see and comment on their tickets  
+   - Optional: basic feedback mechanism or rating system
+
+3. **Walkthrough & Submission**  
+   - 5-minute demo video covering ticket lifecycle  
+   - GitHub repo link with final code  
+   - Post on X (if applicable), showing engagement  
+
+---
+
+## Week 2
+
+### **MVP (Due: Jan 27, 2025)**
+1. **AI Integration Kickoff**  
+   - Basic AI routing or auto-response feature introduced (LLM-generated replies)  
+   - Keep existing permission and security logic intact  
+   - RAG-based knowledge approach (if applicable) starts here
+
+2. **Edge Functions for AI**  
+   - Use or expand Supabase Edge Functions to handle AI calls  
+   - Ensure toggles/overrides for human review
+
+3. **Testing & Validation**  
+   - Basic tests verifying AI interactions do not break ticket flows  
+   - Demo AI-generated response or recommended resolution
+
+### **Final (Due: Jan 31, 2025)**
+1. **Advanced AI Features**  
+   - Refine self-service with AI: possibly a small knowledge base or chatbot flow  
+   - AI-based ticket assignment or escalation  
+   - (Optional) Summaries or real-time dashboards for managers
+
+2. **Human-in-the-Loop**  
+   - Smooth process for workers/managers to review AI responses  
+   - Additional queue or status for AI-suggested tickets
+
+3. **Final Demo & Submission**  
+   - 5-minute demo showcasing AI-driven ticket lifecycle  
+   - Updated GitHub repo + product post  
+   - Publicly accessible deployment
+
+---
+
+## Non-Essential / Future Backlog
+- Custom fields & advanced ticket schemas  
+- Tag system with filtering  
+- Skills-based routing  
+- Multi-channel support (chat, social, SMS)  
+- Comprehensive knowledge base, self-service tools  
+- Deep performance optimizations (caching, advanced indexing)
+
+---
+
