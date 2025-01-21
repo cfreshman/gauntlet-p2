@@ -14,6 +14,7 @@ export interface Database {
           id: string
           username: string
           email: string
+          role: 'customer' | 'worker' | 'manager'
           created_at: string
           updated_at: string
         }
@@ -21,6 +22,7 @@ export interface Database {
           id: string
           username: string
           email: string
+          role: 'customer' | 'worker' | 'manager'
           created_at?: string
           updated_at?: string
         }
@@ -28,6 +30,7 @@ export interface Database {
           id?: string
           username?: string
           email?: string
+          role?: 'customer' | 'worker' | 'manager'
           created_at?: string
           updated_at?: string
         }

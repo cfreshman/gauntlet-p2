@@ -4,13 +4,21 @@ import { User } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
 import { Database } from '../database.types';
 
-export type Profile = Database['public']['Tables']['profiles']['Row'];
+export type Profile = {
+  id: string
+  username: string
+  email: string
+  role: 'customer' | 'worker' | 'manager'
+  team_id?: string
+  created_at: string
+  updated_at: string
+}
 
 type AuthContextType = {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
-  signUp: (email: string, username: string, password: string) => Promise<void>;
+  signUp: (email: string, username: string, password: string, inviteId?: string | null) => Promise<void>;
   signIn: (username: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateUsername: (username: string) => Promise<{ error: null | Error }>;
@@ -128,21 +136,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  async function signUp(email: string, username: string, password: string) {
+  async function signUp(email: string, username: string, password: string, inviteId?: string | null) {
     try {
       await validateUsername(username);
 
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            username,
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sign-up`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
           },
-        },
-      });
+          body: JSON.stringify({ email, username, password, inviteId })
+        }
+      );
 
-      if (error) throw error;
+      const data = await response.json();
+      
+      if (data.error) {
+        throw data.error;
+      }
+
+      // Set the session from the response
+      const { session } = data;
+      if (!session) throw 'signup failed';
+
+      // Set the session in Supabase client
+      await supabase.auth.setSession(session);
+
+      // Update auth state
+      setUser(session.user);
+      if (session.user) {
+        await getProfile(session.user.id);
+      }
+
     } catch (error) {
       if (typeof error === 'string') {
         throw error;

@@ -47,9 +47,10 @@ export function ResetPassword() {
       <Card className="w-[320px]">
         {success ? (
           <CardContent className="pt-4 text-center space-y-4">
-            <p className="text-sm text-muted-foreground">
-              check your email for a reset link
-            </p>
+            <div className="mb-4">
+              <h1 className="text-lg font-semibold">auto-crm</h1>
+              <p className="text-sm text-gray-600">check your email for a reset link</p>
+            </div>
             <Button variant="ghost" asChild className="w-full">
               <Link to="/login">back to login</Link>
             </Button>
@@ -57,6 +58,10 @@ export function ResetPassword() {
         ) : (
           <form onSubmit={handleSubmit}>
             <CardContent className="pt-4">
+              <div className="text-center mb-4">
+                <h1 className="text-lg font-semibold">auto-crm</h1>
+                <p className="text-sm text-gray-600">reset your password</p>
+              </div>
               {error && (
                 <p className="mb-2 text-sm text-destructive">{error}</p>
               )}

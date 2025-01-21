@@ -31,3 +31,27 @@ next-env.d.ts
 # IDE
 .idea
 .vscode
+
+# Logs
+logs
+*.log
+
+# Vite
+.vite/
+*.local
+
+# Supabase
+.branches
+.temp
+.env.local
+.env.development
+.env.production
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

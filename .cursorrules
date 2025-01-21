@@ -31,198 +31,172 @@
 - Use ghost variant for secondary actions
 - Use consistent height for header buttons (h-7) 
 
-# Code Modification Rules
+# Core Rules
+- Never remove working code or functionality
+- Never modify code beyond requested changes
+- Never "improve" or "clean up" working code
+- Keep all security measures intact
+- Follow existing patterns exactly
+
+# Code Changes
 - Only make explicitly requested changes
-- No unintended side effects when making changes
-- Keep all working functionality intact
-- Never modify code that isn't part of the requested change
-- Never remove working functionality or code
-- Preserve existing code behavior
+- Show enough context around changes
+- Use correct file paths
 - Keep working error handling
-- Maintain existing security measures
-- Preserve working CORS configurations
+- Maintain existing configs
+- Deploy after changes
 
-# File Structure Rules
-- Keep existing file organization
-- Keep existing file paths and structures
-- Maintain working import/export structure
-- Preserve working file relationships
-- Keep existing file naming conventions
-- Maintain directory hierarchy
-- Keep existing file names and locations
+# File Structure
+- Keep existing organization
+- Maintain working imports
+- Preserve file relationships
+- Follow naming conventions
 
-# Configuration Rules
-- Keep working environment setups
-- Preserve working build processes
-- Maintain deployment configurations
-- Keep working cache settings
-- Preserve CORS settings
-- Keep working auth configurations
-- Maintain database connections
-- Preserve existing environment variables
-- Keep working database schemas and tables
-- Preserve working RLS policies
-- Keep working edge function configs
-- Maintain working realtime subscriptions
-- Keep working edge function CORS headers
-- Preserve working rate limits
-- Maintain working webhook configurations
-- Keep working storage bucket settings
+# Database Rules
+- Keep working tables/schemas
+- Preserve working functions
+- Maintain working triggers
+- Keep working RLS policies
+- Verify dependencies before changes
 
-# API & Database Rules
-- Keep working API endpoints
-- Preserve working database triggers
-- Maintain working stored procedures
-- Keep working database indexes
-- Preserve working database constraints
-- Keep working database roles
-
-# Authentication Rules
-- Keep working auth providers
-- Preserve working auth callbacks
-- Maintain working auth redirects
-- Keep working auth policies
-- Preserve working JWT settings
-
-# Version Control Rules
-- Keep working lock file entries
-- Preserve dependency versions
-- Maintain peer dependencies
-- Keep working node version settings
-- Preserve typescript configurations
-- Keep existing gitignore patterns
-
-# Example: What Not To Change
-❌ Modifying code beyond requested changes
-❌ Changing working configurations
-❌ Altering existing security measures
-❌ Modifying working error handling
-❌ Changing working CORS settings
-❌ Altering working auth flows
-❌ Modifying working database connections
-❌ Removing working build commands
-❌ Changing working file paths
-❌ Modifying working database schemas
-❌ Changing working RLS policies
-❌ Altering working stored procedures
-❌ Modifying working auth flows
-❌ Changing working realtime subscriptions
-❌ Modifying working build scripts
-❌ Changing working build paths
-❌ Altering working CORS headers
-❌ Modifying working rate limits
-❌ Changing working storage settings
-
-# Example: Acceptable Changes
-✅ Making only requested modifications
-✅ Adding new functionality without breaking existing code
-✅ Extending configurations without breaking working ones
-✅ Adding new security measures alongside existing ones
-✅ Creating new files without modifying existing ones
-✅ Adding new environment variables
-✅ Adding new dependencies
-✅ Adding new database tables
-✅ Creating new stored procedures
-✅ Adding new RLS policies
-✅ Extending existing schemas
-✅ Adding new build scripts
-✅ Creating new storage buckets
-✅ Adding new rate limits 
-
-# Assistant Behavior Rules
-- Only make changes explicitly requested by the user
-- Never suggest "improvements" to working code
-- Never try to "clean up" or "optimize" working code
-- Never remove code just because it seems unused
-- Never change formatting of working code
-- Never modify indentation unless requested
-- Never rewrite working code in a "better" way
-- Never add "missing" error handling to working code
-- Never add "helpful" comments to working code
-- Never change variable/function names to be "clearer"
-
-# Code Block Rules
-- Always include file path when suggesting edits
-- Use "// ... existing code ..." to mark unchanged sections
-- Show enough context around changes for clear location
-- Never rewrite entire files unless specifically requested
-- Keep all working code markers and comments intact
-- Use correct file paths matching project structure
-- Use format: ````language:path/to/file
-- Include full path from project root
-- Match existing directory structure
-- Keep consistent path separators
+# Edge Functions
+- Match existing patterns
+- Use parameterized queries
+- Keep CORS configurations
+- Deploy with project ref
+- Check all dependencies
 
 # Example: What Not To Do
-❌ "This code could be improved by..."
-❌ "I've cleaned up the formatting..."
-❌ "I've added better error handling..."
-❌ "I've made the variable names clearer..."
-❌ "I've optimized this section..."
-❌ Using incorrect/incomplete paths
-❌ Missing file paths in codeblocks
-❌ Using wrong path separators
-
-# Example: Correct Behavior
-✅ Only showing requested changes
-✅ Keeping existing code markers
-✅ Maintaining current formatting
-✅ Preserving working code structure
-✅ Including clear file paths
-✅ Using full paths from root
-✅ Matching project structure
-
-# Suggestion Rules
-- Suggestions should be clearly marked as optional
-- Explain why each suggestion might be helpful
-- Show suggestions separately from requested changes
-- Never mix suggestions with direct changes
-- Always preserve working code in suggestions
-- Make suggestions additive, not replacements
-- Provide context for each suggestion
-- Let user choose which suggestions to implement
-
-# Example: Good Suggestions
-✅ "Optional improvement: Could add input validation here..."
-✅ "Consider adding error logging to help with debugging..."
-✅ "Might want to add a loading state for better UX..."
-✅ "Could add type safety by extending the Profile interface..."
-
-# Example: Bad Suggestions
-❌ "I've improved the code by..."
-❌ "This code should be changed to..."
-❌ "The better way to do this is..."
-❌ "I fixed the code by..." 
-
-# Edge Function Rules
-- Always check existing functions first (e.g., sign-in-with-username)
-- Match existing query patterns exactly
-- Use parameterized queries always
-- Never interpolate values into SQL
-- Keep working CORS configurations
-- Maintain consistent error handling
-- Follow existing security patterns
-- Keep function naming consistent
-- Verify data exists before use
-- Check array bounds
-- Deploy after every change (cd back && supabase functions deploy function-name)
-- Always specify project ref when deploying (--project-ref <ref>)
-- When changing data structure (e.g., array to single), update all references
-- Check all usages after changing return types
-
-# Example: What Not To Do
-❌ Writing new query patterns without checking existing ones
-❌ Using string interpolation in SQL
-❌ Changing CORS without testing
-❌ Deploying from wrong directory
-❌ Breaking existing patterns
-❌ Using data without checks
-❌ Modifying function without deploying
+❌ Removing any working code
+❌ Changing working patterns
+❌ "Cleaning up" existing code
+❌ Breaking dependencies
+❌ Modifying security
 
 # Example: Correct Steps
-✅ Check sign-in-with-username first
-✅ Use parameterized queries
-✅ Match existing patterns
-✅ Deploy after changes
-✅ Test after deployment
-✅ Verify security 
+✅ Check all dependencies first
+✅ Verify code usage
+✅ Keep working functionality
+✅ Follow existing patterns
+✅ Test after changes
+
+# Current Progress
+## Working Flows ✅
+- First sign in creates manager role
+- Manager can create team
+- Manager can invite workers
+- Worker signup + team assignment
+- Customer signup
+- Customer ticket creation
+- Worker ticket list with real-time updates
+- Worker ticket assignment
+- Worker commenting
+- Customer & manager can see ticket updates
+
+## Known Issues ❌
+- Comment username shows as "unknown"
+- Workers cannot see team members in settings
+- Need to verify:
+  - Email visibility/security
+  - Ticket permissions
+  - Team management permissions
+  - Profile update permissions
+
+# Project Requirements
+### **Building a Modern Customer Support System**
+
+Creating a modern customer support system requires a balanced focus on technical architecture, user experience, and customer-facing features. This document outlines the core functionalities required for a robust, scalable, and adaptable system.
+
+### **Core Architecture**
+
+#### **Ticket Data Model**
+
+The ticket system is central to AutoCRM, treated as a living document that captures the entire customer interaction journey. Key components include:
+
+* **Standard Identifiers & Timestamps**: Basic fields like ticket ID, creation date, and status updates.  
+* **Flexible Metadata**:  
+  * **Dynamic Status Tracking**: Reflects team workflows.  
+  * **Priority Levels**: Manage response times effectively.  
+  * **Custom Fields**: Tailor tickets to specific business needs.
+  * **Tags**: Enable categorization and automation.  
+  * **Internal Notes**: Facilitate team collaboration.  
+  * **Full Conversation History**: Includes interactions between customers and team members.
+
+### **API-First Design**
+
+An API-first approach ensures accessibility and scalability, enabling:
+
+* **Integration**: Connect seamlessly with websites, applications, and external tools.  
+* **Automation**: Simplify routine tasks and workflows.  
+* **Analytics**: Support robust reporting and insights.
+
+**API Features:**
+* **Synchronous Endpoints**: Handle immediate operations.  
+* **Granular Permissions**: Ensure secure integrations using API key authentication.
+
+### **Employee Interface**
+
+#### **Queue Management**
+* **Customizable Views**: Prioritize tickets effectively.  
+* **Real-Time Updates**: Reflect changes instantly.  
+* **Quick Filters**: Focus on ticket states and priorities.  
+
+#### **Ticket Handling**
+* **Customer History**: Display detailed interaction logs.  
+* **Rich Text Editing**: Craft polished responses.  
+* **Quick Responses**: Use macros and templates.  
+* **Collaboration Tools**: Share internal notes and updates.
+
+### **Administrative Control**
+
+#### **Team Management**
+* Create and manage teams with specific focus areas.  
+* Assign agents based on skills.  
+* Set coverage schedules and monitor team performance.
+
+### **Customer Features**
+
+#### **Customer Portal**
+* **Ticket Tracking**: Allow customers to view, update, and track their tickets.  
+* **History of Interactions**: Display previous communications and resolutions.  
+* **Secure Login**: Ensure privacy with authentication.
+
+#### **Communication Tools**
+* **Email Integration**: Allow ticket creation and updates directly via email.
+
+#### **Feedback and Engagement**
+* **Issue Feedback**: Collect feedback after ticket resolution.  
+* **Ratings System**: Let customers rate their support experience.
+
+### **NON-ESSENTIAL Features**
+The following features are considered non-essential and can be implemented later if needed:
+
+#### **Schema Flexibility** [NON-ESSENTIAL]
+* Easy field addition
+* Migration system
+* Audit logging
+* Archival strategies
+
+#### **Performance Optimization** [NON-ESSENTIAL]
+* Caching
+* Query optimization
+* Scalable storage
+* Regular maintenance
+
+#### **Multi-Channel Support** [NON-ESSENTIAL]
+* Mobile-friendly design
+* Omnichannel integration
+* Support for chat, social media, SMS
+
+#### **Advanced Features** [NON-ESSENTIAL]
+* AI-powered chatbots
+* Personalized suggestions
+* Proactive notifications
+* Multilingual support
+* Web widgets
+* Live chat
+* Interactive tutorials
+* Knowledge base
+* Self-service tools
+
+Start by targeting "You should have a working CRM app with at least ticket entities and creation" - this includes roles so we can create tickets as customers and 'work' on them as workers/managers

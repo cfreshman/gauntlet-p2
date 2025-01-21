@@ -5,9 +5,9 @@ import { SupabaseStatus } from '../components/ui/supabase-status';
 export function Landing() {
   return (
     <div className="flex flex-col items-center justify-center gap-4 py-12">
-      <h1 className="text-2xl font-medium">welcome to gauntlet-starter</h1>
+      <h1 className="text-2xl font-medium">welcome to auto-crm</h1>
       <p className="text-sm text-muted-foreground">
-        a starter template for building apps with react and supabase
+        modern customer support system
       </p>
       <div className="flex gap-2">
         <Button asChild>

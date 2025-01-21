@@ -1,0 +1,65 @@
+#!/bin/bash
+
+# Check if environment is provided
+if [ -z "$1" ]; then
+    echo "Error: Environment required"
+    echo "Usage: ./reset-and-migrate.sh <dev|development|prod|production>"
+    exit 1
+fi
+
+# Convert environment argument to standard form
+case $1 in
+  "dev"|"development")
+    ENV_FILE=".env.development"
+    ;;
+  "prod"|"production")
+    ENV_FILE=".env.production"
+    ;;
+  *)
+    echo "Error: Invalid environment. Use dev|development|prod|production"
+    exit 1
+    ;;
+esac
+
+# Check if env file exists
+if [ ! -f $ENV_FILE ]; then
+    echo "Error: $ENV_FILE not found"
+    exit 1
+fi
+
+# Extract project ref from PLATFORM_URL
+PLATFORM_URL=$(grep PLATFORM_URL $ENV_FILE | cut -d '=' -f2)
+if [ -z "$PLATFORM_URL" ]; then
+    echo "Error: PLATFORM_URL not found in $ENV_FILE"
+    exit 1
+fi
+
+# Extract project ref from URL
+PROJECT_REF=$(echo $PLATFORM_URL | sed -E 's/https:\/\/([^.]+).supabase.co/\1/')
+if [ -z "$PROJECT_REF" ]; then
+    echo "Error: Could not extract project ref from PLATFORM_URL"
+    exit 1
+fi
+
+# Confirm reset
+read -p "This will delete ALL data including auth users in the $1 environment. Are you sure? (y/N) " -n 1 -r
+echo
+if [[ ! $REPLY =~ ^[Yy]$ ]]
+then
+    echo "Operation cancelled"
+    exit 1
+fi
+
+# Update config.toml with project ref
+sed -i.bak "s/project_id = \".*\"/project_id = \"$PROJECT_REF\"/" supabase/config.toml
+rm supabase/config.toml.bak
+
+# Link project
+echo "Linking project..."
+supabase link --project-ref $PROJECT_REF
+
+# Reset and migrate
+echo "Resetting database and applying migrations..."
+supabase db reset --linked
+
+echo "Reset and migrations complete for $1 project: $PROJECT_REF" 

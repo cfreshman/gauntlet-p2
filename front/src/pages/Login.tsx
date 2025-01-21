@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/hooks/useAuth';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -11,6 +11,13 @@ export function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { signIn } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  
+  // Properly construct the from path
+  const from = location.state?.from 
+    ? `${location.state.from.pathname}${location.state.from.search || ''}`
+    : '/';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,6 +26,7 @@ export function Login() {
 
     try {
       await signIn(username, password);
+      navigate(from, { replace: true });
     } catch (err) {
       setError(err as string);
     } finally {
@@ -31,6 +39,10 @@ export function Login() {
       <Card className="w-[320px]">
         <form onSubmit={handleSubmit}>
           <CardContent className="pt-4">
+            <div className="text-center mb-4">
+              <h1 className="text-lg font-semibold">auto-crm</h1>
+              <p className="text-sm text-gray-600">sign in to your account</p>
+            </div>
             {error && (
               <p className="mb-2 text-sm text-destructive">{error}</p>
             )}
@@ -56,14 +68,9 @@ export function Login() {
             <Button className="w-full" disabled={loading}>
               {loading ? 'signing in...' : 'sign in'}
             </Button>
-            <div className="space-y-2">
-              <Button variant="ghost" asChild className="w-full">
-                <Link to="/reset-password">forgot password?</Link>
-              </Button>
-              <Button variant="ghost" asChild className="w-full">
-                <Link to="/signup">need an account?</Link>
-              </Button>
-            </div>
+            <Button variant="ghost" asChild className="w-full">
+              <Link to="/signup" state={location.state}>need an account?</Link>
+            </Button>
           </CardFooter>
         </form>
       </Card>

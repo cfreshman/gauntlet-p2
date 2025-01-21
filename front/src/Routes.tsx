@@ -7,16 +7,21 @@ import { Landing } from './pages/Landing';
 import { Dashboard } from './pages/Dashboard';
 import { ResetPassword } from './pages/ResetPassword';
 import { UpdatePassword } from './pages/UpdatePassword';
+import { TicketList } from './components/tickets/TicketList';
+import { TicketCreate } from './components/tickets/TicketCreate';
+import { TicketDetail } from './components/tickets/TicketDetail';
+import { Logout } from './pages/Logout';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
   
   if (loading) {
-    return null; // or a loading spinner
+    return null;
   }
   
   if (!user) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
   
   return <>{children}</>;
@@ -24,13 +29,14 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 
 function RequireGuest({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
   
   if (loading) {
-    return null; // or a loading spinner
+    return null;
   }
   
   if (user) {
-    return <Navigate to="/" />;
+    return <Navigate to="/" replace />;
   }
   
   return <>{children}</>;
@@ -73,6 +79,26 @@ export function Routes() {
       <Route path="/update-password" element={
         <RequireAuth>
           <UpdatePassword />
+        </RequireAuth>
+      } />
+      <Route path="/tickets" element={
+        <RequireAuth>
+          <TicketList />
+        </RequireAuth>
+      } />
+      <Route path="/tickets/new" element={
+        <RequireAuth>
+          <TicketCreate />
+        </RequireAuth>
+      } />
+      <Route path="/tickets/:id" element={
+        <RequireAuth>
+          <TicketDetail />
+        </RequireAuth>
+      } />
+      <Route path="/logout" element={
+        <RequireAuth>
+          <Logout />
         </RequireAuth>
       } />
     </RouterRoutes>
