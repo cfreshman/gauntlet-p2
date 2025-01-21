@@ -25,19 +25,20 @@ export function TicketList() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [searchParams, setSearchParams] = useSearchParams()
+  const [ready, setReady] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
 
-  // Get all filters from URL params or stored config
+  // Restore filters from storage if URL is empty
   useEffect(() => {
     if (location.search === '') {
       const storedFilters = localStorage.getItem(FILTER_STORAGE_KEY)
       if (storedFilters) {
-        const params = new URLSearchParams(storedFilters)
-        setSearchParams(params)
+        setSearchParams(new URLSearchParams(storedFilters))
       }
     }
-  }, [location.search])
+    setReady(true)
+  }, []) // Only run on mount
 
   const viewMode = searchParams.get('view') || 'tickets'
   const statusFilter = searchParams.get('status') || 'all'
@@ -81,7 +82,9 @@ export function TicketList() {
     })
   }, [tickets])
 
+  // Load tickets when filters change
   useEffect(() => {
+    if (!ready) return
     loadTickets()
 
     // Subscribe to changes
@@ -104,7 +107,7 @@ export function TicketList() {
     return () => {
       channel.unsubscribe()
     }
-  }, [searchParams]) // Only depend on searchParams since it contains all filters
+  }, [searchParams, ready]) // Only load when ready and params change
 
   async function loadTickets() {
     try {

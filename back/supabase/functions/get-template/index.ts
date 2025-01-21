@@ -19,7 +19,12 @@ serve(async (req) => {
     // Get template ticket
     const { data: template, error: templateError } = await supabase
       .from('tickets')
-      .select('*')
+      .select(`
+        *,
+        ticket_tag_links(
+          tag: ticket_tags(*)
+        )
+      `)
       .eq('id', id)
       .ilike('title', 'template: %')
       .single()

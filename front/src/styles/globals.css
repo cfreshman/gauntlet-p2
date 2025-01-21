@@ -4,48 +4,50 @@
  
 @layer base {
   :root {
-    --background: 39 13% 92%;
-    --foreground: 240 10% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --background: 0 0% 96%;  /* Light gray background */
+    --foreground: 0 0% 0%;
+    --card: 0 0% 100%;  /* Pure white cards */
+    --card-foreground: 0 0% 0%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 157 39% 51%;
+    --popover-foreground: 0 0% 0%;
+    --header: 0 0% 100%;  /* White header */
+    --primary: 0 100% 50%;  /* Mondrian Red */
     --primary-foreground: 0 0% 100%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 157 39% 51%;
+    --secondary: 60 100% 50%;  /* Mondrian Yellow */
+    --secondary-foreground: 0 0% 0%;
+    --muted: 220 13% 91%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 240 100% 50%;  /* Mondrian Blue */
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 157 39% 51%;
-    --radius: 0.5rem;
+    --border: 0 0% 0%;  /* Mondrian Black */
+    --input: 0 0% 89.8%;
+    --ring: 0 100% 50%;
+    --radius: 0;  /* Mondrian uses sharp edges */
   }
  
   .dark {
-    --background: 39 13% 92%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 157 39% 51%;
+    --background: 0 0% 10%;  /* Dark gray background */
+    --foreground: 0 0% 100%;
+    --card: 0 0% 15%;  /* Slightly lighter dark gray for cards */
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 15%;
+    --popover-foreground: 0 0% 100%;
+    --header: 0 0% 15%;  /* Match card color */
+    --primary: 0 100% 50%;  /* Mondrian Red */
     --primary-foreground: 0 0% 100%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 157 39% 51%;
+    --secondary: 60 100% 50%;  /* Mondrian Yellow */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 20%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 240 100% 50%;  /* Mondrian Blue */
     --accent-foreground: 0 0% 100%;
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 157 39% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 100%;  /* White borders in dark mode */
+    --input: 0 0% 20%;
+    --ring: 0 100% 50%;
   }
 }
  

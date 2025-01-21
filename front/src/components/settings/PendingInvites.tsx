@@ -23,7 +23,29 @@ export function PendingInvites() {
   const [teamMember, setTeamMember] = useState<{ team_id: string } | null>(null)
 
   useEffect(() => {
-    loadInvites()
+    if (profile) {
+      loadInvites()
+
+      // Subscribe to team_invites changes
+      const channel = supabase
+        .channel('pending-invites')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'team_invites'
+          },
+          () => {
+            loadInvites()
+          }
+        )
+        .subscribe()
+
+      return () => {
+        channel.unsubscribe()
+      }
+    }
   }, [profile])
 
   async function loadInvites() {

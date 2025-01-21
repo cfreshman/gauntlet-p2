@@ -40,6 +40,17 @@ export function useTeamMembers(userId?: string) {
             loadWorkers()
           }
         )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'team_members'
+          },
+          () => {
+            loadWorkers()
+          }
+        )
         .subscribe()
 
       return () => {

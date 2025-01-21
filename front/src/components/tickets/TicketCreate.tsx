@@ -15,6 +15,12 @@ interface TemplateData {
   title: string
   description: string
   priority: TicketPriority
+  ticket_tag_links?: Array<{
+    tag: {
+      id: string
+      name: string
+    }
+  }>
 }
 
 export function TicketCreate() {
@@ -23,6 +29,7 @@ export function TicketCreate() {
   const templateId = searchParams.get('template')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [priority, setPriority] = useState<TicketPriority>('medium')
   const { user } = useAuth()
   const { fields, values, updateValue, validateFields } = useCustomFields(templateId || undefined)
   const [template, setTemplate] = useState<TemplateData | null>(null)
@@ -32,6 +39,12 @@ export function TicketCreate() {
       loadTemplate()
     }
   }, [templateId])
+
+  useEffect(() => {
+    if (template?.priority) {
+      setPriority(template.priority)
+    }
+  }, [template])
 
   async function loadTemplate() {
     try {
@@ -45,7 +58,8 @@ export function TicketCreate() {
         setTemplate({
           title: data.title.slice(9),
           description: data.description || '',
-          priority: data.priority || 'medium'
+          priority: data.priority || 'medium',
+          ticket_tag_links: data.ticket_tag_links
         })
       }
     } catch (e) {
@@ -65,9 +79,10 @@ export function TicketCreate() {
     const data = {
       title: formData.get('title') as string,
       description: formData.get('description') as string,
-      priority: formData.get('priority') as TicketPriority,
+      priority,
       created_by: user.id,
-      field_values: values
+      field_values: values,
+      tags: template?.ticket_tag_links?.map(link => link.tag.id) || []
     }
 
     // Validate required fields
@@ -101,7 +116,7 @@ export function TicketCreate() {
   }
 
   return (
-    <div className="max-w-lg mx-auto">
+    <div className="max-w-lg mx-auto px-4 py-6">
       <h1 className="text-2xl font-bold mb-2">create ticket</h1>
       
       <form onSubmit={handleSubmit} className="space-y-2">
@@ -136,7 +151,8 @@ export function TicketCreate() {
           </label>
           <Select
             name="priority"
-            value={template?.priority || 'medium'}
+            value={priority}
+            onValueChange={(value) => setPriority(value as TicketPriority)}
           >
             <SelectTrigger>
               <SelectValue />
@@ -149,6 +165,24 @@ export function TicketCreate() {
             </SelectContent>
           </Select>
         </div>
+
+        {template?.ticket_tag_links && template.ticket_tag_links.length > 0 && (
+          <div>
+            <label className="block text-sm mb-1">
+              tags
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {template.ticket_tag_links.map(link => (
+                <div 
+                  key={link.tag.id}
+                  className="px-2 py-1 bg-gray-100 rounded-full text-sm"
+                >
+                  {link.tag.name}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {fields && fields.length > 0 && (
           <div>

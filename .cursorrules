@@ -7,26 +7,42 @@ build a modern customer support system (crm) with generative ai enhancements. th
 
 **phases**  
 1. **week 1 mvp (by jan 21, 2025)**  
-   - functional baseline crm  
-   - roles: customer, worker, manager  
-   - ticket creation & management with row-level security  
-   - minimal ui for listing and updating tickets  
-   - keep existing patterns; do not remove or break anything  
+   - ✅ functional baseline crm  
+   - ✅ roles: customer, worker, manager  
+   - ✅ ticket creation & management with row-level security  
+   - ✅ minimal ui for listing and updating tickets  
+   - ✅ keep existing patterns; do not remove or break anything  
 
 2. **week 1 final (by jan 24, 2025)**  
    - polish the existing crm  
-   - ensure stable team management, comment system, assignments  
-   - fix major bugs (unknown username, visibility issues)  
-   - deliver a 5-min walkthrough video  
+   - ✅ ensure stable team management, comment system, assignments  
+   - ✅ internal comments for workers/managers
+   - ✅ fix major bugs (unknown username, visibility issues)  
+   - ✅ template system for quick responses
+   - remaining features:
+     - ticket feedback/rating system
+     - ticket history view
+     - bulk operations for tickets
+     - deliver a 5-min walkthrough video  
 
 3. **week 2 mvp (by jan 27, 2025)**  
-   - introduce basic ai (auto-route or auto-reply)  
+   - introduce basic ai features:
+     - auto-route tickets based on content
+     - auto-reply for common questions
+     - suggested responses for agents
    - maintain user roles & rls  
    - any ai logic must be optional/toggleable  
+   - integrate with knowledge base
+   - implement RAG system for context
 
 4. **week 2 final (by jan 31, 2025)**  
-   - refine ai features (knowledge-based suggestions, escalation, etc.)  
+   - refine ai features:
+     - knowledge-based suggestions
+     - smart escalation rules
+     - ticket summarization
+     - performance analytics
    - ensure human-in-the-loop oversight  
+   - implement learning system from human interventions
    - deliver final demo showing ai-driven workflow  
 
 **important notes**  

@@ -4,7 +4,7 @@ import { SupabaseStatus } from '../components/ui/supabase-status';
 
 export function Landing() {
   return (
-    <div className="flex flex-col items-center justify-center gap-4 py-12">
+    <div className="flex flex-col items-center justify-center gap-4 px-4 py-12">
       <h1 className="text-2xl font-medium">welcome to auto-crm</h1>
       <p className="text-sm text-muted-foreground">
         modern customer support system

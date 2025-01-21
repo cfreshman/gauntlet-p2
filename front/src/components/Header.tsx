@@ -15,7 +15,7 @@ export function Header() {
   const isTicketList = location.pathname === '/tickets';
 
   return (
-    <header className="bg-[#d0d5d6] border-b h-12 flex items-center px-4">
+    <header className="bg-header border-b h-12 flex items-center px-4">
       <div className="flex-1 flex items-center">
         <Link to="/" className="text-lg font-semibold">
           auto-crm

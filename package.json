@@ -12,4 +12,4 @@
     "preview": "yarn workspace front preview",
     "lint": "yarn workspace front lint"
   }
-} 
+}

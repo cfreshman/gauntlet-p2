@@ -34,12 +34,23 @@ if [ -z "$PLATFORM_URL" ]; then
     exit 1
 fi
 
+# Extract PLATFORM_KEY
+PLATFORM_KEY=$(grep PLATFORM_KEY $ENV_FILE | cut -d '=' -f2)
+if [ -z "$PLATFORM_KEY" ]; then
+    echo "Error: PLATFORM_KEY not found in $ENV_FILE"
+    exit 1
+fi
+
 # Extract project ref from URL (assumes format: https://<project-ref>.supabase.co)
 PROJECT_REF=$(echo $PLATFORM_URL | sed -E 's/https:\/\/([^.]+).supabase.co/\1/')
 if [ -z "$PROJECT_REF" ]; then
     echo "Error: Could not extract project ref from PLATFORM_URL"
     exit 1
 fi
+
+# Set environment variables
+echo "Setting environment variables..."
+supabase secrets set --project-ref $PROJECT_REF PLATFORM_URL=$PLATFORM_URL PLATFORM_KEY=$PLATFORM_KEY
 
 # Deploy all functions
 supabase functions deploy create-ticket --project-ref $PROJECT_REF

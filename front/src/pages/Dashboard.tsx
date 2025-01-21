@@ -47,7 +47,8 @@ export function Dashboard() {
       // Base query will respect RLS policies
       const { data, error } = await supabase
         .from('tickets')
-        .select('status, priority, assigned_to, updated_at')
+        .select('status, priority, assigned_to, updated_at, title')
+        .not('title', 'like', 'template:%')
 
       if (error) throw error
 

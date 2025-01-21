@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { corsHeaders } from '../_shared/cors.ts'
 
 interface CreateTicketPayload {
@@ -34,7 +34,7 @@ serve(async (req) => {
 
     // Get request data
     const { title, description, priority, team_id, required_skills, field_values, tags } = await req.json() as CreateTicketPayload
-    console.log('Received request data:', { title, description, priority, team_id, field_values })
+    console.log('Received request data:', { title, description, priority, team_id, field_values, tags })
 
     // Validate required fields
     if (!title) throw new Error('title required')

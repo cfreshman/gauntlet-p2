@@ -850,3 +850,26 @@ create policy "Can insert field values on new tickets"
     )
   );
 
+-- Add delete policies for tag links
+create policy "Can delete tags on updatable tickets"
+  on ticket_tag_links for delete
+  using (
+    exists (
+      select 1 from tickets t
+      where t.id = ticket_id
+      and (
+        assigned_to = auth.uid()
+        or exists (
+          select 1 from team_members
+          where team_id = t.team_id
+          and user_id = auth.uid()
+        )
+        or exists (
+          select 1 from profiles
+          where id = auth.uid()
+          and role = 'manager'
+        )
+      )
+    )
+  );
+

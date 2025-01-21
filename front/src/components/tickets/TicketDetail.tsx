@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import type { Ticket, TicketStatus, TicketPriority } from '../../lib/types'
@@ -13,6 +13,14 @@ import { CustomField } from './CustomField'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
 import { Textarea } from '../ui/textarea'
 import { createDebouncer } from '../../lib/utils'
+import { useTags } from '../../lib/hooks/useTags'
+import { useTicketTags } from '../../lib/hooks/useTicketTags'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog'
+import { Input } from '../ui/input'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '../ui/command'
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
+import { Check, ChevronsUpDown } from 'lucide-react'
+import { Switch } from '../ui/switch'
 
 interface Comment {
   id: string
@@ -38,16 +46,40 @@ export function TicketDetail() {
   const [ticket, setTicket] = useState<TicketWithProfile | null>(null)
   const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState('')
+  const [isInternal, setIsInternal] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [updatingComment, setUpdatingComment] = useState(false)
   const [updatingTicket, setUpdatingTicket] = useState(false)
   const { getAssignableMembers } = useTeammates(profile?.id)
-  const { fields, values, updateValue } = useCustomFields(id)
+  const { fields, values, updateValue, loadFields } = useCustomFields(id)
   const { fields: allFields } = useFieldDefinitions()
   const [addingField, setAddingField] = useState(false)
   const [selectedFieldId, setSelectedFieldId] = useState('')
   const saveDebouncer = createDebouncer()
+  const { tags, createTag } = useTags()
+  const { ticketTags, addTag, removeTag } = useTicketTags(id)
+  const [newTagName, setNewTagName] = useState('')
+  const [showTagDialog, setShowTagDialog] = useState(false)
+  const [tagSearchOpen, setTagSearchOpen] = useState(false)
+  const [tagSearch, setTagSearch] = useState('')
+
+  const isTemplate = ticket?.title.startsWith('template: ')
+  const isManager = profile?.role === 'manager'
+  const isManagerOrWorker = profile?.role === 'manager' || profile?.role === 'worker'
+
+  const filteredTags = useMemo(() => {
+    const searchLower = tagSearch.toLowerCase()
+    const filtered = tags
+      .filter(t => !ticketTags.find(tt => tt.id === t.id))
+      .filter(t => t.name.toLowerCase().includes(searchLower))
+
+    if (isManager && tagSearch && !tags.find(t => t.name.toLowerCase() === tagSearch.toLowerCase())) {
+      filtered.push({ id: 'create', name: `create "${tagSearch}"` })
+    }
+
+    return filtered
+  }, [tags, ticketTags, tagSearch, isManager])
 
   useEffect(() => {
     loadTicket()
@@ -212,7 +244,7 @@ export function TicketDetail() {
         .insert({
           ticket_id: ticket.id,
           content: newComment.trim(),
-          internal: false,
+          internal: isInternal,
           created_by: user.id
         })
         .select()
@@ -220,6 +252,7 @@ export function TicketDetail() {
 
       if (error) throw error
       setNewComment('')
+      setIsInternal(false)
       await loadComments()
     } catch (e) {
       console.error('Error creating comment:', e)
@@ -311,9 +344,6 @@ export function TicketDetail() {
   const isAssignedToMe = ticket.assigned_to === user?.id
   const canUpdateStatus = profile?.role === 'manager' || isAssignedToMe
   const assignableMembers = profile ? getAssignableMembers(profile.role) : []
-  const isTemplate = ticket.title.startsWith('template: ')
-  const isManager = profile?.role === 'manager'
-  const isManagerOrWorker = profile?.role === 'manager' || profile?.role === 'worker'
 
   async function handleTemplateToggle() {
     if (!ticket) return
@@ -359,8 +389,11 @@ export function TicketDetail() {
 
     setAddingField(false)
     setSelectedFieldId('')
-    // Reload fields
-    loadTicket()
+    // Reload fields and ticket data
+    await Promise.all([
+      loadTicket(),
+      loadFields()
+    ])
   }
 
   async function handleRemoveField(fieldId: string) {
@@ -375,8 +408,39 @@ export function TicketDetail() {
       return
     }
 
-    // Reload fields
-    loadTicket()
+    // Reload fields and ticket data
+    await Promise.all([
+      loadTicket(),
+      loadFields()
+    ])
+  }
+
+  async function handleTagSelect(value: string) {
+    if (value === 'create') {
+      setShowTagDialog(true)
+    } else {
+      addTag(value)
+    }
+  }
+
+  async function handleCreateTag() {
+    if (!newTagName.trim()) return
+    
+    const tag = await createTag(newTagName.trim())
+    if (tag) {
+      addTag(tag.id)
+      setNewTagName('')
+      setShowTagDialog(false)
+    }
+  }
+
+  async function handleRemoveTag(tagId: string) {
+    try {
+      await removeTag(tagId)
+    } catch (e) {
+      console.error('Error removing tag:', e)
+      setError('failed to remove tag')
+    }
   }
 
   return (
@@ -456,6 +520,108 @@ export function TicketDetail() {
             ) : (
               <p className="font-medium">{ticket.priority}</p>
             )}
+          </div>
+          <div>
+            <span className="text-sm text-gray-500">tags</span>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {ticketTags.map(tag => (
+                <div 
+                  key={tag.id}
+                  className="flex items-center gap-1 px-2 py-1 bg-gray-100 rounded-full text-sm"
+                >
+                  {tag.name}
+                  {isManagerOrWorker && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await removeTag(tag.id)
+                        } catch (e) {
+                          console.error('Error removing tag:', e)
+                          setError('failed to remove tag')
+                        }
+                      }}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              ))}
+              {isManagerOrWorker && (
+                <Popover open={tagSearchOpen} onOpenChange={setTagSearchOpen}>
+                  <PopoverTrigger asChild>
+                    <button className="flex items-center gap-1 px-2 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200">
+                      add tag
+                      <ChevronsUpDown className="h-3 w-3 opacity-50" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[300px] p-0" align="start">
+                    <Command className="w-full [&_[cmdk-input-wrapper]]:px-0">
+                      <CommandInput 
+                        placeholder="search tags..." 
+                        className="h-9 w-full ring-0 focus:ring-0 focus-visible:ring-0" 
+                        value={tagSearch} 
+                        onValueChange={setTagSearch}
+                        onKeyDown={async (e) => {
+                          if (e.key === 'Enter' && tagSearch) {
+                            e.preventDefault()
+                            if (filteredTags.length === 1) {
+                              const tag = filteredTags[0]
+                              try {
+                                if (tag.id === 'create') {
+                                  const newTag = await createTag(tagSearch.trim())
+                                  if (newTag) {
+                                    await addTag(newTag.id)
+                                  }
+                                } else {
+                                  await addTag(tag.id)
+                                }
+                                setTagSearchOpen(false)
+                                setTagSearch('')
+                              } catch (e) {
+                                console.error('Error with tag:', e)
+                                setError('failed to handle tag')
+                              }
+                            }
+                          }
+                        }}
+                      />
+                      <CommandEmpty className="py-2 px-3 text-sm text-gray-500">no tags found</CommandEmpty>
+                      <CommandGroup className="max-h-[200px] overflow-y-auto">
+                        {filteredTags.map(tag => (
+                          <CommandItem
+                            key={tag.id}
+                            onSelect={async () => {
+                              try {
+                                if (tag.id === 'create') {
+                                  const newTag = await createTag(tagSearch.trim())
+                                  if (newTag) {
+                                    await addTag(newTag.id)
+                                  }
+                                } else {
+                                  await addTag(tag.id)
+                                }
+                                setTagSearchOpen(false)
+                                setTagSearch('')
+                              } catch (e) {
+                                console.error('Error with tag:', e)
+                                setError('failed to handle tag')
+                              }
+                            }}
+                            className={tag.id === 'create' 
+                              ? "py-2 px-3 cursor-pointer hover:bg-accent hover:text-accent-foreground text-blue-600"
+                              : "py-2 px-3 cursor-pointer hover:bg-accent hover:text-accent-foreground"}
+                          >
+                            {tag.id === 'create' ? `create "${tagSearch}"` : tag.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              )}
+            </div>
           </div>
           <div>
             <span className="text-sm text-gray-500">assignee</span>
@@ -561,7 +727,9 @@ export function TicketDetail() {
         <h2 className="text-lg font-medium mb-4">comments</h2>
         
         <div className="space-y-4 mb-4">
-          {comments.map(comment => (
+          {comments
+            .filter(comment => !comment.internal || isManagerOrWorker)
+            .map(comment => (
             <div key={comment.id} className="border-b pb-4">
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
@@ -569,6 +737,11 @@ export function TicketDetail() {
                   <span className="text-sm text-gray-500">
                     {new Date(comment.created_at).toLocaleString()}
                   </span>
+                  {comment.internal && (
+                    <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">
+                      internal
+                    </span>
+                  )}
                 </div>
                 {(profile?.role === 'manager' || (profile?.role === 'customer' && comment.created_by === user?.id)) && (
                   <Button 
@@ -586,7 +759,7 @@ export function TicketDetail() {
           ))}
         </div>
 
-        <form onSubmit={handleCommentSubmit}>
+        <form onSubmit={handleCommentSubmit} className="space-y-2">
           <Textarea
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
@@ -594,8 +767,23 @@ export function TicketDetail() {
             placeholder="Add a comment..."
             rows={3}
             disabled={updatingComment}
+            className="w-full"
           />
-          <Button type="submit" disabled={updatingComment || !newComment.trim()}>
+          {isManagerOrWorker && (
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={isInternal}
+                onCheckedChange={setIsInternal}
+                disabled={updatingComment}
+              />
+              <span className="text-sm">internal note</span>
+            </div>
+          )}
+          <Button 
+            type="submit" 
+            disabled={updatingComment || !newComment.trim()}
+            className="w-full"
+          >
             {updatingComment ? 'posting...' : 'post comment'}
           </Button>
         </form>

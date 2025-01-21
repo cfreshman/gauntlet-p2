@@ -15,6 +15,38 @@ export function UnclaimedWorkers() {
   useEffect(() => {
     if (profile?.role === 'manager') {
       loadTeamAndWorkers()
+
+      // Subscribe to team_members changes
+      const channel = supabase
+        .channel('unclaimed-workers')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'team_members'
+          },
+          () => {
+            loadTeamAndWorkers()
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'profiles',
+            filter: 'role=eq.worker'
+          },
+          () => {
+            loadTeamAndWorkers()
+          }
+        )
+        .subscribe()
+
+      return () => {
+        channel.unsubscribe()
+      }
     }
   }, [profile])
 

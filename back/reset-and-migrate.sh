@@ -27,10 +27,12 @@ if [ ! -f $ENV_FILE ]; then
     exit 1
 fi
 
-# Extract project ref from PLATFORM_URL
+# Extract project ref and platform key from env file
 PLATFORM_URL=$(grep PLATFORM_URL $ENV_FILE | cut -d '=' -f2)
-if [ -z "$PLATFORM_URL" ]; then
-    echo "Error: PLATFORM_URL not found in $ENV_FILE"
+PLATFORM_KEY=$(grep PLATFORM_KEY $ENV_FILE | cut -d '=' -f2)
+
+if [ -z "$PLATFORM_URL" ] || [ -z "$PLATFORM_KEY" ]; then
+    echo "Error: PLATFORM_URL or PLATFORM_KEY not found in $ENV_FILE"
     exit 1
 fi
 
@@ -41,8 +43,12 @@ if [ -z "$PROJECT_REF" ]; then
     exit 1
 fi
 
+# Debug info
+echo "Project ref: $PROJECT_REF"
+echo "Database host: db.${PROJECT_REF}.supabase.co"
+
 # Confirm reset
-read -p "This will delete ALL data including auth users in the $1 environment. Are you sure? (y/N) " -n 1 -r
+read -p "This will COMPLETELY RESET the database in the $1 environment. Are you sure? (y/N) " -n 1 -r
 echo
 if [[ ! $REPLY =~ ^[Yy]$ ]]
 then
@@ -58,8 +64,8 @@ rm supabase/config.toml.bak
 echo "Linking project..."
 supabase link --project-ref $PROJECT_REF
 
-# Reset and migrate
-echo "Resetting database and applying migrations..."
-supabase db reset --linked
+# Run migrations (this will run our reset migration first, then recreate everything)
+echo "Running migrations..."
+SUPABASE_ACCESS_TOKEN="$PLATFORM_KEY" supabase migration up --linked
 
-echo "Reset and migrations complete for $1 project: $PROJECT_REF" 
+echo "Reset complete for $1 project: $PROJECT_REF" 

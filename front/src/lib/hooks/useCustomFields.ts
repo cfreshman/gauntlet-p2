@@ -117,6 +117,7 @@ export function useCustomFields(ticketId?: string) {
     loading,
     error,
     updateValue,
-    validateFields
+    validateFields,
+    loadFields
   }
 } 
