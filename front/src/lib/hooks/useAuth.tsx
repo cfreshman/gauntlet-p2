@@ -2,7 +2,6 @@ import * as React from 'react';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
-import { Database } from '../database.types';
 
 export type Profile = {
   id: string

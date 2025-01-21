@@ -24,14 +24,12 @@ export function CustomFieldManager({ teamId }: CustomFieldManagerProps) {
   const {
     fields,
     teamFields,
-    loading,
     error,
     createField,
-    updateField,
-    deleteField,
     addFieldToTeam,
-    removeFieldFromTeam
-  } = useFieldDefinitions(teamId)
+    removeFieldFromTeam,
+    deleteField
+  } = useFieldDefinitions(teamId || undefined)
 
   const [newField, setNewField] = useState<{
     name: string
@@ -143,7 +141,7 @@ export function CustomFieldManager({ teamId }: CustomFieldManagerProps) {
               {teamId && (
                 <Switch
                   checked={teamFieldIds.has(field.id)}
-                  onCheckedChange={(checked: boolean) => handleToggleTeamField(field.id, teamFieldIds.has(field.id))}
+                  onCheckedChange={() => handleToggleTeamField(field.id, teamFieldIds.has(field.id))}
                 />
               )}
               

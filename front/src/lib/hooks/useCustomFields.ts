@@ -6,6 +6,7 @@ export interface CustomField {
   name: string
   type: 'text' | 'number' | 'boolean' | 'date'
   required: boolean
+  owner_id?: string | null
 }
 
 interface SupabaseFieldValue {
@@ -38,7 +39,7 @@ export function useCustomFields(ticketId?: string) {
 
     try {
       // Check if this is a template
-      const { data: ticket, error: ticketError } = await supabase
+      const { error: ticketError } = await supabase
         .from('tickets')
         .select('title')
         .eq('id', ticketId)

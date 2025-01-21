@@ -2,9 +2,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../lib/hooks/useAuth';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { Card, CardContent, CardFooter } from '../components/ui/card';
+import { Card, CardContent } from '../components/ui/card';
 import { supabase } from '../lib/supabase';
-import type { Profile } from '../lib/hooks/useAuth';
 import TeamMembers from '../components/settings/TeamMembers';
 import { UnclaimedWorkers } from '../components/settings/UnclaimedWorkers';
 import { FieldManager } from '../components/settings/FieldManager';
@@ -12,15 +11,6 @@ import { FieldManager } from '../components/settings/FieldManager';
 type Status = {
   type: 'error' | 'success' | null;
   message: string;
-};
-
-type TeamInvite = {
-  id: string;
-  email: string;
-  role: 'worker' | 'manager';
-  status: 'pending' | 'accepted' | 'expired';
-  created_at: string;
-  magic_link?: string;
 };
 
 export function Settings() {
@@ -32,13 +22,6 @@ export function Settings() {
   const [passwordStatus, setPasswordStatus] = useState<Status>({ type: null, message: '' });
   const [emailStatus, setEmailStatus] = useState<Status>({ type: null, message: '' });
   const [loading, setLoading] = useState(false);
-  const [users, setUsers] = useState<Profile[]>([]);
-  const [roleStatus, setRoleStatus] = useState<Status>({ type: null, message: '' });
-  const [inviteRole, setInviteRole] = useState<'worker' | 'manager'>('worker');
-  const [inviteStatus, setInviteStatus] = useState<Status>({ type: null, message: '' });
-  const [invites, setInvites] = useState<TeamInvite[]>([]);
-  const [selectedInvite, setSelectedInvite] = useState<string | null>(null);
-  const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null);
   const [teamName, setTeamName] = useState('');
   const [teamStatus, setTeamStatus] = useState<Status>({ type: null, message: '' });
   const [hasTeam, setHasTeam] = useState(false);
@@ -47,8 +30,6 @@ export function Settings() {
   // Fetch users and invites if current user is a manager
   useEffect(() => {
     if (profile?.role === 'manager') {
-      fetchUsers();
-      fetchInvites();
       checkForTeam();
     }
   }, [profile]);
@@ -58,43 +39,6 @@ export function Settings() {
       setUsername(profile.username);
     }
   }, [profile?.username]);
-
-  async function fetchUsers() {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('username');
-
-      if (error) throw error;
-      setUsers(data);
-    } catch (error) {
-      console.error('Error fetching users:', error);
-    }
-  }
-
-  async function fetchInvites() {
-    try {
-      const { data, error } = await supabase
-        .from('team_invites')
-        .select('*')
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      
-      // Add signup URL to each invite
-      const invitesWithLinks = data.map(invite => ({
-        ...invite,
-        magic_link: `${window.location.origin}/signup?invite=${invite.id}`
-      }));
-      
-      console.log('Fetched invites:', invitesWithLinks);
-      setInvites(invitesWithLinks);
-    } catch (error) {
-      console.error('Error fetching invites:', error);
-    }
-  }
 
   async function checkForTeam() {
     try {
@@ -109,41 +53,6 @@ export function Settings() {
       setTeamId(data?.team_id);
     } catch (error) {
       console.error('Error checking for team:', error);
-    }
-  }
-
-  async function updateUserRole(userId: string, newRole: 'customer' | 'worker' | 'manager') {
-    if (!profile || profile.role !== 'manager') return;
-    
-    setRoleStatus({ type: null, message: '' });
-    setLoading(true);
-
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-profile`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-          },
-          body: JSON.stringify({ id: userId, role: newRole })
-        }
-      );
-
-      const data = await response.json();
-      
-      if (data.error) {
-        throw data.error;
-      }
-
-      setRoleStatus({ type: 'success', message: 'role updated' });
-      fetchUsers(); // Refresh user list
-    } catch (error) {
-      console.error('Error updating role:', error);
-      setRoleStatus({ type: 'error', message: 'failed to update role' });
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -224,63 +133,6 @@ export function Settings() {
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEmail(e.target.value);
     setEmailStatus({ type: null, message: '' });
-  };
-
-  async function handleInvite(e: React.FormEvent) {
-    e.preventDefault();
-    if (profile?.role !== 'manager') return;
-
-    setInviteStatus({ type: null, message: '' });
-    setLoading(true);
-
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite-team-member`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-          },
-          body: JSON.stringify({ role: inviteRole })
-        }
-      );
-
-      const data = await response.json();
-      
-      if (data.error) {
-        throw data.error;
-      }
-
-      // Construct signup URL with role in it
-      const signupUrl = `${window.location.origin}/signup?invite=${data.invite_id}`
-
-      // Copy link immediately
-      navigator.clipboard.writeText(signupUrl);
-      setCopiedInviteId(data.invite_id);
-      setTimeout(() => setCopiedInviteId(null), 2000);
-
-      setInviteStatus({ type: 'success', message: 'invite created and copied to clipboard' });
-      setInvites(prev => [{
-        id: data.invite_id,
-        email: '',
-        role: inviteRole,
-        status: 'pending',
-        created_at: new Date().toISOString(),
-        magic_link: signupUrl
-      }, ...prev]);
-    } catch (error) {
-      console.error('Error creating invite:', error);
-      setInviteStatus({ type: 'error', message: typeof error === 'string' ? error : 'failed to create invite' });
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const copyInviteLink = (inviteId: string, link: string) => {
-    navigator.clipboard.writeText(link);
-    setCopiedInviteId(inviteId);
-    setTimeout(() => setCopiedInviteId(null), 2000);
   };
 
   async function handleCreateTeam(e: React.FormEvent) {

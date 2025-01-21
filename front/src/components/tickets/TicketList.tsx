@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom'
+import { Link, useSearchParams, useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import type { Ticket } from '../../lib/types'
 import { useAuth } from '../../lib/hooks/useAuth'
@@ -26,7 +26,6 @@ export function TicketList() {
   const [error, setError] = useState('')
   const [searchParams, setSearchParams] = useSearchParams()
   const [ready, setReady] = useState(false)
-  const navigate = useNavigate()
   const location = useLocation()
 
   // Restore filters from storage if URL is empty

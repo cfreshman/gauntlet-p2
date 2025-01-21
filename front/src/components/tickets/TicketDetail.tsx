@@ -8,18 +8,15 @@ import { useUsernames } from '../../lib/hooks/useUsernames'
 import { useTeammates } from '../../lib/hooks/useTeammates'
 import { useCustomFields } from '../../lib/hooks/useCustomFields'
 import { useFieldDefinitions } from '../../lib/hooks/useFieldDefinitions'
-import { CustomFields } from './CustomFields'
 import { CustomField } from './CustomField'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
 import { Textarea } from '../ui/textarea'
 import { createDebouncer } from '../../lib/utils'
 import { useTags } from '../../lib/hooks/useTags'
 import { useTicketTags } from '../../lib/hooks/useTicketTags'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog'
-import { Input } from '../ui/input'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '../ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
-import { Check, ChevronsUpDown } from 'lucide-react'
+import { ChevronsUpDown } from 'lucide-react'
 import { Switch } from '../ui/switch'
 
 interface Comment {
@@ -59,8 +56,6 @@ export function TicketDetail() {
   const saveDebouncer = createDebouncer()
   const { tags, createTag } = useTags()
   const { ticketTags, addTag, removeTag } = useTicketTags(id)
-  const [newTagName, setNewTagName] = useState('')
-  const [showTagDialog, setShowTagDialog] = useState(false)
   const [tagSearchOpen, setTagSearchOpen] = useState(false)
   const [tagSearch, setTagSearch] = useState('')
 
@@ -307,7 +302,7 @@ export function TicketDetail() {
       setUpdatingTicket(true)
       
       try {
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('ticket_field_values')
           .upsert({
             ticket_id: ticket.id,
@@ -413,34 +408,6 @@ export function TicketDetail() {
       loadTicket(),
       loadFields()
     ])
-  }
-
-  async function handleTagSelect(value: string) {
-    if (value === 'create') {
-      setShowTagDialog(true)
-    } else {
-      addTag(value)
-    }
-  }
-
-  async function handleCreateTag() {
-    if (!newTagName.trim()) return
-    
-    const tag = await createTag(newTagName.trim())
-    if (tag) {
-      addTag(tag.id)
-      setNewTagName('')
-      setShowTagDialog(false)
-    }
-  }
-
-  async function handleRemoveTag(tagId: string) {
-    try {
-      await removeTag(tagId)
-    } catch (e) {
-      console.error('Error removing tag:', e)
-      setError('failed to remove tag')
-    }
   }
 
   return (

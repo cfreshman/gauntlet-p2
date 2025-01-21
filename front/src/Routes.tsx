@@ -1,4 +1,4 @@
-import { Navigate, Routes as RouterRoutes, Route, useLocation } from 'react-router-dom';
+import { Navigate, Routes as RouterRoutes, Route, useNavigate } from 'react-router-dom';
 import { useAuth } from './lib/hooks/useAuth';
 import { Login } from './pages/Login';
 import { Signup } from './pages/Signup';
@@ -11,25 +11,32 @@ import { TicketList } from './components/tickets/TicketList';
 import { TicketCreate } from './components/tickets/TicketCreate';
 import { TicketDetail } from './components/tickets/TicketDetail';
 import { Logout } from './pages/Logout';
+import { useEffect } from 'react';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  const location = useLocation();
-  
+
   if (loading) {
-    return null;
+    return <div>loading...</div>;
   }
-  
+
   if (!user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/login" />;
   }
-  
+
   return <>{children}</>;
 }
 
 function RequireGuest({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  const location = useLocation();
+  const navigate = useNavigate();
+  
+  // Redirect to home if authenticated
+  useEffect(() => {
+    if (!loading && user) {
+      navigate('/');
+    }
+  }, [user, loading, navigate]);
   
   if (loading) {
     return null;
@@ -43,7 +50,7 @@ function RequireGuest({ children }: { children: React.ReactNode }) {
 }
 
 function Home() {
-  const { user, loading, profile } = useAuth();
+  const { user, loading } = useAuth();
   
   if (loading) {
     return null; // or a loading spinner

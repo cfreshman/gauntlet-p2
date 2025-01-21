@@ -2,15 +2,10 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { CustomField } from './useCustomFields'
 
-interface TeamFieldDefinition {
-  team_id: string
-  field_id: string
-}
-
 export function useFieldDefinitions(teamId?: string) {
   const [fields, setFields] = useState<CustomField[]>([])
   const [teamFields, setTeamFields] = useState<CustomField[]>([])
-  const [loading, setLoading] = useState(false)
+  const [loading] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {

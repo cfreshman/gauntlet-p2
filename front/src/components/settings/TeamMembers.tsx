@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useAuth } from '../../lib/hooks/useAuth'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
@@ -15,66 +15,6 @@ export default function TeamMembers() {
   const [editingName, setEditingName] = useState(false)
   const [newTeamName, setNewTeamName] = useState('')
   const [roleLoading, setRoleLoading] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (profile?.role === 'manager') {
-      loadTeamAndMembers()
-
-      // Subscribe to team_members and profiles changes
-      const channel = supabase
-        .channel('team-members')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'team_members'
-          },
-          () => {
-            loadTeamAndMembers()
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'profiles'
-          },
-          () => {
-            loadTeamAndMembers()
-          }
-        )
-        .subscribe()
-
-      return () => {
-        channel.unsubscribe()
-      }
-    }
-  }, [profile])
-
-  async function loadTeamAndMembers() {
-    if (!profile?.id) return
-
-    try {
-      // Load team
-      const { data: teamData } = await supabase
-        .from('teams')
-        .select('*')
-        .eq('manager_id', profile.id)
-        .single()
-
-      if (teamData?.id) {
-        // Load team members
-        const { data: membersData } = await supabase
-          .from('team_members')
-          .select('*, profile:profiles(*)')
-          .eq('team_id', teamData.id)
-      }
-    } catch (error) {
-      console.error('Error loading team and members:', error)
-    }
-  }
 
   async function renameTeam() {
     if (!teamMember?.team_id || !newTeamName) return

@@ -5,14 +5,6 @@ import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../components/ui/dropdown-menu'
 
-interface CustomField {
-  id: string
-  name: string
-  type: 'text' | 'number' | 'boolean' | 'date'
-  required: boolean
-  owner_id: string
-}
-
 interface FieldManagerProps {
   teamId: string | null
 }
@@ -32,7 +24,6 @@ export function FieldManager({ teamId }: FieldManagerProps) {
     createField,
     addFieldToTeam,
     removeFieldFromTeam,
-    transferOwnership,
     deleteField
   } = useFieldDefinitions(teamId || undefined)
 

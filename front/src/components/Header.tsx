@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/hooks/useAuth';
 import {
@@ -10,7 +9,7 @@ import {
 import { Button } from './ui/button';
 
 export function Header() {
-  const { user, profile, signOut } = useAuth();
+  const { profile, signOut } = useAuth();
   const location = useLocation();
   const isTicketList = location.pathname === '/tickets';
 
