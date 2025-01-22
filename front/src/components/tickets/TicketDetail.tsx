@@ -16,7 +16,7 @@ import { useTags } from '../../lib/hooks/useTags'
 import { useTicketTags } from '../../lib/hooks/useTicketTags'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '../ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
-import { ChevronsUpDown, TrashIcon } from 'lucide-react'
+import { ChevronsUpDown, TrashIcon, Star } from 'lucide-react'
 import { Switch } from '../ui/switch'
 import { Label } from '../ui/label'
 
@@ -26,6 +26,14 @@ interface Comment {
   created_at: string
   created_by: string
   internal: boolean
+}
+
+interface TicketFeedback {
+  id: string
+  rating: number
+  comment: string | null
+  created_at: string
+  created_by: string
 }
 
 interface TicketWithProfile extends Ticket {
@@ -43,6 +51,7 @@ export function TicketDetail() {
   const { usernames, fetchUsername } = useUsernames()
   const [ticket, setTicket] = useState<TicketWithProfile | null>(null)
   const [comments, setComments] = useState<Comment[]>([])
+  const [feedback, setFeedback] = useState<TicketFeedback | null>(null)
   const [newComment, setNewComment] = useState('')
   const [isInternal, setIsInternal] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -58,10 +67,20 @@ export function TicketDetail() {
   const { ticketTags, addTag, removeTag } = useTicketTags(id)
   const [tagSearchOpen, setTagSearchOpen] = useState(false)
   const [tagSearch, setTagSearch] = useState('')
+  const [newFeedback, setNewFeedback] = useState({
+    rating: 5,
+    comment: ''
+  })
 
   const isTemplate = ticket?.title.startsWith('template: ')
   const isManager = profile?.role === 'manager'
   const isManagerOrWorker = profile?.role === 'manager' || profile?.role === 'worker'
+  const canLeaveFeedback = profile?.role === 'customer' && 
+    ticket?.created_by === user?.id && 
+    (ticket?.status === 'resolved' || ticket?.status === 'closed')
+
+  // Add state to track if we're editing
+  const [isEditing, setIsEditing] = useState(false)
 
   const filteredTags = useMemo(() => {
     const searchLower = tagSearch.toLowerCase()
@@ -79,6 +98,7 @@ export function TicketDetail() {
   useEffect(() => {
     loadTicket()
     loadComments()
+    loadFeedback()
 
     const channel = supabase
       .channel('ticket')
@@ -107,6 +127,18 @@ export function TicketDetail() {
           loadComments()
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'ticket_feedback',
+          filter: `ticket_id=eq.${id}`
+        },
+        () => {
+          loadFeedback()
+        }
+      )
       .subscribe()
 
     return () => {
@@ -114,7 +146,7 @@ export function TicketDetail() {
     }
   }, [id])
 
-  // Load usernames when ticket/comments change
+  // Load usernames when ticket/comments/feedback change
   useEffect(() => {
     if (ticket) {
       fetchUsername(ticket.created_by)
@@ -126,7 +158,11 @@ export function TicketDetail() {
     comments.forEach(comment => {
       fetchUsername(comment.created_by)
     })
-  }, [ticket, comments])
+
+    if (feedback) {
+      fetchUsername(feedback.created_by)
+    }
+  }, [ticket, comments, feedback])
 
   async function loadTicket() {
     try {
@@ -159,6 +195,27 @@ export function TicketDetail() {
     } catch (e) {
       console.error('Error loading comments:', e)
       setError('failed to load comments')
+    }
+  }
+
+  async function loadFeedback() {
+    try {
+      const { data, error } = await supabase
+        .from('ticket_feedback')
+        .select('*')
+        .eq('ticket_id', id)
+        .single()
+
+      if (error && error.code !== 'PGRST116') throw error // PGRST116 is "no rows returned"
+      setFeedback(data)
+      
+      // Pre-fetch username for feedback
+      if (data) {
+        await fetchUsername(data.created_by)
+      }
+    } catch (e) {
+      console.error('Error loading feedback:', e)
+      setError('failed to load feedback')
     }
   }
 
@@ -404,9 +461,154 @@ export function TicketDetail() {
     ])
   }
 
+  // Add function to start editing feedback
+  function handleEditFeedback() {
+    if (!feedback) return
+    setNewFeedback({
+      rating: feedback.rating,
+      comment: feedback.comment || ''
+    })
+    setIsEditing(true)
+  }
+
+  // Add function to cancel editing
+  function handleCancelEdit() {
+    setIsEditing(false)
+    setNewFeedback({ rating: 5, comment: '' })
+  }
+
+  async function handleSubmitFeedback(e: React.FormEvent) {
+    e.preventDefault()
+    if (!user || !ticket) return
+    setUpdatingTicket(true)
+
+    try {
+      if (isEditing) {
+        // Update existing feedback
+        const { error } = await supabase
+          .from('ticket_feedback')
+          .update({
+            rating: newFeedback.rating,
+            comment: newFeedback.comment.trim() || null
+          })
+          .eq('id', feedback?.id)
+
+        if (error) throw error
+      } else {
+        // Create new feedback
+        const { data, error } = await supabase
+          .from('ticket_feedback')
+          .insert({
+            ticket_id: ticket.id,
+            rating: newFeedback.rating,
+            comment: newFeedback.comment.trim() || null
+          })
+          .select()
+          .single()
+
+        if (error) throw error
+        
+        // Pre-fetch username for new feedback
+        if (data) {
+          await fetchUsername(data.created_by)
+        }
+      }
+
+      await loadFeedback()
+      setNewFeedback({ rating: 5, comment: '' })
+      setIsEditing(false)
+    } catch (e) {
+      console.error('Error submitting feedback:', e)
+      setError('failed to submit feedback')
+    } finally {
+      setUpdatingTicket(false)
+    }
+  }
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
       <div className="space-y-4">
+        {/* Feedback Display */}
+        {feedback && !isEditing && (
+          <div className="bg-background border border-primary shadow rounded-lg p-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-semibold text-primary">feedback</h2>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star
+                      key={i}
+                      className={`h-5 w-5 ${i < feedback.rating ? 'fill-yellow-500 text-yellow-500' : 'fill-primary/10 text-primary/10'}`}
+                    />
+                  ))}
+                </div>
+                {(profile?.role === 'manager' || feedback.created_by === user?.id) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleEditFeedback}
+                  >
+                    edit
+                  </Button>
+                )}
+              </div>
+            </div>
+            {feedback.comment && feedback.comment.trim() && (
+              <div className="text-primary whitespace-pre-wrap mt-4">
+                {feedback.comment}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Feedback Form */}
+        {((canLeaveFeedback && !feedback) || isEditing) && (
+          <div className="bg-background border border-primary shadow rounded-lg p-4">
+            <h2 className="text-lg font-semibold text-primary mb-4">
+              {isEditing ? 'edit feedback' : 'leave feedback'}
+            </h2>
+            <form onSubmit={handleSubmitFeedback} className="space-y-4">
+              <div>
+                <span className="text-sm text-primary/70">rating</span>
+                <div className="flex items-center gap-1 mt-1">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setNewFeedback({ ...newFeedback, rating: i + 1 })}
+                      className="focus:outline-none"
+                    >
+                      <Star
+                        className={`h-6 w-6 ${i < newFeedback.rating ? 'fill-yellow-500 text-yellow-500' : 'fill-primary/10 text-primary/10'} hover:fill-yellow-500 hover:text-yellow-500 transition-colors`}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <span className="text-sm text-primary/70">comment (optional)</span>
+                <Textarea 
+                  value={newFeedback.comment}
+                  onChange={(e) => setNewFeedback({ ...newFeedback, comment: e.target.value })}
+                  placeholder="write your comment..."
+                  className="w-full mt-1"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit" disabled={!newFeedback.rating || updatingTicket}>
+                  {updatingTicket ? 'submitting...' : isEditing ? 'update feedback' : 'submit feedback'}
+                </Button>
+                {isEditing && (
+                  <Button type="button" variant="ghost" onClick={handleCancelEdit}>
+                    cancel
+                  </Button>
+                )}
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* Main Ticket Details */}
         <div className="bg-background border border-primary shadow rounded-lg p-4">
           <div className="flex justify-between items-start">
             <div>

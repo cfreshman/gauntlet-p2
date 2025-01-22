@@ -18,6 +18,22 @@ type SortOrder = 'asc' | 'desc'
 
 const FILTER_STORAGE_KEY = 'ticket-filters'
 
+// Add status and priority order maps
+const STATUS_ORDER = {
+  new: 0,
+  open: 1,
+  pending: 2,
+  resolved: 3,
+  closed: 4
+}
+
+const PRIORITY_ORDER = {
+  urgent: 0,
+  high: 1,
+  medium: 2,
+  low: 3
+}
+
 export function TicketList() {
   const { profile, user } = useAuth()
   const { usernames, fetchUsername } = useUsernames()
@@ -149,14 +165,39 @@ export function TicketList() {
       }
 
       // Apply sorting
-      query = query.order(sortField, { ascending: sortOrder === 'asc' })
-
-      const { data, error } = await query
-
-      if (error) throw error
-      setTickets(data)
-    } catch (error) {
-      console.error('Error loading tickets:', error)
+      if (sortField === 'status') {
+        // Get all tickets and sort in memory for status
+        query = query.order('created_at', { ascending: false })
+        const { data, error } = await query
+        if (error) throw error
+        
+        const sortedData = [...data].sort((a, b) => {
+          const aOrder = STATUS_ORDER[a.status as keyof typeof STATUS_ORDER]
+          const bOrder = STATUS_ORDER[b.status as keyof typeof STATUS_ORDER]
+          return sortOrder === 'asc' ? aOrder - bOrder : bOrder - aOrder
+        })
+        setTickets(sortedData)
+      } else if (sortField === 'priority') {
+        // Get all tickets and sort in memory for priority
+        query = query.order('created_at', { ascending: false })
+        const { data, error } = await query
+        if (error) throw error
+        
+        const sortedData = [...data].sort((a, b) => {
+          const aOrder = PRIORITY_ORDER[a.priority as keyof typeof PRIORITY_ORDER]
+          const bOrder = PRIORITY_ORDER[b.priority as keyof typeof PRIORITY_ORDER]
+          return sortOrder === 'asc' ? aOrder - bOrder : bOrder - aOrder
+        })
+        setTickets(sortedData)
+      } else {
+        // For created_at, use database sorting
+        query = query.order(sortField, { ascending: sortOrder === 'asc' })
+        const { data, error } = await query
+        if (error) throw error
+        setTickets(data)
+      }
+    } catch (e) {
+      console.error('Error loading tickets:', e)
       setError('failed to load tickets')
     } finally {
       setLoading(false)
@@ -301,46 +342,68 @@ export function TicketList() {
 
       <div className="bg-background border border-primary shadow rounded-lg overflow-hidden">
         <div className="divide-y divide-primary/20">
-          {tickets.map(ticket => (
-            <div key={ticket.id} className="hover:bg-primary/5 p-4">
-              <Link 
-                to={`/tickets/${ticket.id}`}
-                className="block"
-              >
-                <div className="text-lg font-medium text-primary hover:text-primary/90 mb-1">
-                  {ticket.title}
+          {tickets.length > 0 ? (
+            tickets.map(ticket => (
+              <div key={ticket.id} className="hover:bg-primary/5 p-4">
+                <Link 
+                  to={`/tickets/${ticket.id}`}
+                  className="block"
+                >
+                  <div className="text-lg font-medium text-primary hover:text-primary/90 mb-1">
+                    {ticket.title}
+                  </div>
+                  <div className="text-sm text-primary/70 flex gap-4">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                      ticket.status === 'new' ? 'bg-blue-500/10 text-blue-500' :
+                      ticket.status === 'open' ? 'bg-green-500/10 text-green-500' :
+                      ticket.status === 'pending' ? 'bg-yellow-500/10 text-yellow-500' :
+                      ticket.status === 'resolved' ? 'bg-purple-500/10 text-purple-500' :
+                      'bg-primary/10 text-primary'
+                    }`}>{ticket.status}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                      ticket.priority === 'urgent' ? 'bg-red-500/10 text-red-500' :
+                      ticket.priority === 'high' ? 'bg-orange-500/10 text-orange-500' :
+                      ticket.priority === 'medium' ? 'bg-yellow-500/10 text-yellow-500' :
+                      'bg-green-500/10 text-green-500'
+                    }`}>{ticket.priority}</span>
+                    <span>by {usernames[ticket.created_by] || 'unknown'}</span>
+                    <span>
+                      {ticket.assigned_to ? (
+                        <Link 
+                          to={`/tickets?assigned=${ticket.assigned_to}`}
+                          className="hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          assigned to {usernames[ticket.assigned_to] || 'unknown'}
+                        </Link>
+                      ) : 'unassigned'}
+                    </span>
+                    <span>{new Date(ticket.created_at).toLocaleString()}</span>
+                  </div>
+                </Link>
+              </div>
+            ))
+          ) : (
+            <div className="p-8 text-center text-primary/70">
+              no tickets found
+              {(statusFilter !== 'all' || priorityFilter !== 'all' || assignedFilter) && (
+                <div className="mt-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      updateParams({
+                        status: null,
+                        priority: null,
+                        assigned: null
+                      })
+                    }}
+                  >
+                    clear filters
+                  </Button>
                 </div>
-                <div className="text-sm text-primary/70 flex gap-4">
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                    ticket.status === 'new' ? 'bg-blue-500/10 text-blue-500' :
-                    ticket.status === 'open' ? 'bg-green-500/10 text-green-500' :
-                    ticket.status === 'pending' ? 'bg-yellow-500/10 text-yellow-500' :
-                    ticket.status === 'resolved' ? 'bg-purple-500/10 text-purple-500' :
-                    'bg-primary/10 text-primary'
-                  }`}>{ticket.status}</span>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                    ticket.priority === 'urgent' ? 'bg-red-500/10 text-red-500' :
-                    ticket.priority === 'high' ? 'bg-orange-500/10 text-orange-500' :
-                    ticket.priority === 'medium' ? 'bg-yellow-500/10 text-yellow-500' :
-                    'bg-green-500/10 text-green-500'
-                  }`}>{ticket.priority}</span>
-                  <span>by {usernames[ticket.created_by] || 'unknown'}</span>
-                  <span>
-                    {ticket.assigned_to ? (
-                      <Link 
-                        to={`/tickets?assigned=${ticket.assigned_to}`}
-                        className="hover:underline"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        assigned to {usernames[ticket.assigned_to] || 'unknown'}
-                      </Link>
-                    ) : 'unassigned'}
-                  </span>
-                  <span>{new Date(ticket.created_at).toLocaleString()}</span>
-                </div>
-              </Link>
+              )}
             </div>
-          ))}
+          )}
         </div>
       </div>
     </div>

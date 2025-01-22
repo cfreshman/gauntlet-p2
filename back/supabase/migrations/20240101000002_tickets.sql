@@ -905,3 +905,39 @@ USING (bucket_id = 'kb' AND EXISTS (
   AND role IN ('worker', 'manager')
 ));
 
+-- Add trigger for setting created_by on ticket_feedback
+create trigger set_ticket_feedback_created_by
+  before insert on ticket_feedback
+  for each row
+  execute function handle_auth_user();
+
+-- Add update/delete policies for feedback
+create policy "Customers can update their own feedback"
+  on ticket_feedback for update
+  using (created_by = auth.uid())
+  with check (created_by = auth.uid());
+
+create policy "Managers can update any feedback"
+  on ticket_feedback for update
+  using (
+    exists (
+      select 1 from profiles p
+      where p.id = auth.uid()
+      and p.role = 'manager'
+    )
+  );
+
+create policy "Customers can delete their own feedback"
+  on ticket_feedback for delete
+  using (created_by = auth.uid());
+
+create policy "Managers can delete any feedback"
+  on ticket_feedback for delete
+  using (
+    exists (
+      select 1 from profiles p
+      where p.id = auth.uid()
+      and p.role = 'manager'
+    )
+  );
+
