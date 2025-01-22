@@ -12,6 +12,9 @@ interface TicketWithProfile extends Ticket {
   assigned_to: string | null
   created_by: string
   team_id: string | null
+  feedback: {
+    rating: number
+  }[] | null
 }
 
 type SortField = 'created_at' | 'priority' | 'status'
@@ -151,7 +154,12 @@ export function TicketList() {
 
       let query = supabase
         .from('tickets')
-        .select('*')
+        .select(`
+          *,
+          feedback:ticket_feedback (
+            rating
+          )
+        `)
 
       // Show either templates or regular tickets
       if (profile?.role !== 'customer') {
@@ -490,6 +498,11 @@ export function TicketList() {
                       ) : 'unassigned'}
                     </span>
                     <span>{new Date(ticket.created_at).toLocaleString()}</span>
+                    {ticket.feedback?.[0] && (
+                      <span className="text-primary">
+                        {ticket.feedback[0].rating} ★
+                      </span>
+                    )}
                   </div>
                 </Link>
               </div>
