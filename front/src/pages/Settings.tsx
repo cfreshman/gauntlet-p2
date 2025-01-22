@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import TeamMembers from '../components/settings/TeamMembers';
 import { UnclaimedWorkers } from '../components/settings/UnclaimedWorkers';
 import { FieldManager } from '../components/settings/FieldManager';
+import { SkillManager } from '../components/settings/SkillManager'
 
 type Status = {
   type: 'error' | 'success' | null;
@@ -210,6 +211,14 @@ export function Settings() {
 
         {(profile?.role === 'manager' || profile?.role === 'worker') && (
           <TeamMembers />
+        )}
+
+        {(profile?.role === 'manager' || profile?.role === 'worker') && (
+          <Card>
+            <CardContent className="pt-4">
+              <SkillManager teamId={teamId} />
+            </CardContent>
+          </Card>
         )}
 
         {profile?.role === 'manager' && hasTeam && (
