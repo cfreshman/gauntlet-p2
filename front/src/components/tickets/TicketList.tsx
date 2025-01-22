@@ -5,16 +5,8 @@ import type { Ticket } from '../../lib/types'
 import { useAuth } from '../../lib/hooks/useAuth'
 import { Button } from '../ui/button'
 import { useUsernames } from '../../lib/hooks/useUsernames'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
-import { Switch } from '../ui/switch'
 import { useTeams } from '../../lib/hooks/useTeams'
-
-interface Team {
-  id: string
-  name: string
-  created_at: string
-  created_by: string
-}
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
 
 interface TicketWithProfile extends Ticket {
   assigned_to: string | null
@@ -95,7 +87,7 @@ export function TicketList() {
   const assignedFilter = profile?.role === 'customer' ? 'any' : ((searchParams.get('assigned') as AssignedFilter) || 'any')
   const assignedId = searchParams.get('assigned_id')
   const closedAfter = profile?.role === 'customer' ? null : (searchParams.get('closed_after') || null)
-  const teamFilter = profile?.role === 'customer' ? null : (searchParams.get('team') || null)
+  const teamId = searchParams.get('team_id')
 
   // Update URL params helper
   const updateParams = (updates: Record<string, string | null>) => {
@@ -154,6 +146,9 @@ export function TicketList() {
 
   async function loadTickets() {
     try {
+      setLoading(true)
+      setError('')
+
       let query = supabase
         .from('tickets')
         .select('*')
@@ -185,6 +180,11 @@ export function TicketList() {
       }
       if (priorityFilter !== 'all') {
         query = query.eq('priority', priorityFilter)
+      }
+
+      // Handle team_id filter
+      if (teamId) {
+        query = query.eq('team_id', teamId)
       }
 
       // Handle assignment filter
@@ -242,7 +242,7 @@ export function TicketList() {
       }
     } catch (e) {
       console.error('Error loading tickets:', e)
-      setError('failed to load tickets')
+      setError('Failed to load tickets')
     } finally {
       setLoading(false)
     }
@@ -275,6 +275,10 @@ export function TicketList() {
               {assignedId ? (
                 <span className="text-2xl text-primary/90">
                   assigned to {usernames[assignedId] || 'loading...'}
+                </span>
+              ) : teamId ? (
+                <span className="text-2xl text-primary/90">
+                  assigned to {teams?.find(t => t.id === teamId)?.name || 'loading...'} team
                 </span>
               ) : (
                 <>
@@ -390,29 +394,31 @@ export function TicketList() {
 
           <div>
             <label className="block text-sm text-primary/70 mb-1">assigned to</label>
-            <Select 
-              value={assignedId || assignedFilter} 
+            <Select
+              value={assignedId || teamId || assignedFilter}
               onValueChange={(value) => {
-                if (value === assignedId) {
-                  // Clear the assigned_id filter
-                  updateParams({ assigned_id: null })
-                } else if (['any', 'unassigned', 'my-team', 'me'].includes(value)) {
-                  // Standard filter selected
-                  updateParams({ 
-                    assigned: value as AssignedFilter,
-                    assigned_id: null 
-                  })
-                } else {
-                  // User ID selected
-                  updateParams({ 
-                    assigned_id: value,
-                    assigned: null
-                  })
+                const params = new URLSearchParams(searchParams)
+                
+                // Clear both assigned_id and team_id when selecting standard options
+                if (['any', 'unassigned', 'my-team', 'me'].includes(value)) {
+                  params.delete('assigned_id')
+                  params.delete('team_id') 
+                  params.set('assigned', value)
                 }
+                // Clear the other param when setting one
+                else if (value === assignedId) {
+                  params.delete('assigned_id')
+                  params.delete('assigned')
+                }
+                else if (value === teamId) {
+                  params.delete('team_id')
+                  params.delete('assigned') 
+                }
+                setSearchParams(params)
               }}
             >
-              <SelectTrigger className="w-[120px]">
-                <SelectValue />
+              <SelectTrigger>
+                <SelectValue placeholder="assigned to..." />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="any">any</SelectItem>
@@ -420,9 +426,10 @@ export function TicketList() {
                 <SelectItem value="my-team">my team</SelectItem>
                 <SelectItem value="me">just me</SelectItem>
                 {assignedId && usernames[assignedId] && (
-                  <SelectItem value={assignedId}>
-                    {usernames[assignedId]}
-                  </SelectItem>
+                  <SelectItem value={assignedId}>{usernames[assignedId]}</SelectItem>
+                )}
+                {teamId && teams?.find(t => t.id === teamId)?.name && (
+                  <SelectItem value={teamId}>{teams.find(t => t.id === teamId)?.name} team</SelectItem>
                 )}
               </SelectContent>
             </Select>
@@ -459,13 +466,27 @@ export function TicketList() {
                     <span>by {usernames[ticket.created_by] || 'unknown'}</span>
                     <span>
                       {ticket.assigned_to ? (
-                        <Link 
-                          to={`/tickets?assigned_id=${ticket.assigned_to}`}
-                          className="hover:underline"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          assigned to {usernames[ticket.assigned_to] || 'unknown'}
-                        </Link>
+                        <>
+                          assigned to{' '}
+                          <Link 
+                            to={`/tickets?assigned_id=${ticket.assigned_to}`}
+                            className="hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {usernames[ticket.assigned_to] || 'unknown'}
+                          </Link>
+                          {ticket.team_id && teams?.find(t => t.id === ticket.team_id)?.name && (
+                            <>, {' '}
+                              <Link
+                                to={`/tickets?team_id=${ticket.team_id}`}
+                                className="hover:underline"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {teams.find(t => t.id === ticket.team_id)?.name}
+                              </Link>
+                            </>
+                          )}
+                        </>
                       ) : 'unassigned'}
                     </span>
                     <span>{new Date(ticket.created_at).toLocaleString()}</span>

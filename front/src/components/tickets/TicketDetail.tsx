@@ -39,7 +39,7 @@ interface TicketFeedback {
 interface TicketWithProfile extends Ticket {
   assigned_to: string | null
   created_by: string
-  team_id: string
+  team_id: string | null
   profiles: {
     username: string
   }
@@ -525,8 +525,60 @@ export function TicketDetail() {
     }
   }
 
+  async function handleClaimForTeam() {
+    if (!user || !ticket) return
+    setUpdatingTicket(true)
+    
+    try {
+      if (ticket.team_id) {
+        // Unclaim - set team_id to null
+        const { error: updateError } = await supabase
+          .from('tickets')
+          .update({ team_id: null })
+          .eq('id', ticket.id)
+
+        if (updateError) throw updateError
+        setTicket(prev => prev ? { ...prev, team_id: null } : null)
+      } else {
+        // Claim - set team_id to manager's team
+        const { data: teamData, error: teamError } = await supabase
+          .from('team_members')
+          .select('team_id')
+          .eq('user_id', user.id)
+          .single()
+
+        if (teamError) throw teamError
+
+        const { error: updateError } = await supabase
+          .from('tickets')
+          .update({ team_id: teamData.team_id })
+          .eq('id', ticket.id)
+
+        if (updateError) throw updateError
+        setTicket(prev => prev ? { ...prev, team_id: teamData.team_id } : null)
+      }
+    } catch (e) {
+      console.error('Error claiming/unclaiming ticket:', e)
+      setError('failed to claim/unclaim ticket')
+    } finally {
+      setUpdatingTicket(false)
+    }
+  }
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
+      {isManager && !ticket.assigned_to && (
+        <div className="mb-4 flex justify-center">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleClaimForTeam}
+            disabled={updatingTicket}
+          >
+            {ticket.team_id ? 'unclaim from team' : 'claim for team'}
+          </Button>
+        </div>
+      )}
       <div className="space-y-4">
         {/* Feedback Display */}
         {feedback && !isEditing && (
