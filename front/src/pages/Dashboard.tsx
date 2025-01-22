@@ -3,6 +3,9 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../lib/hooks/useAuth'
 import { supabase } from '../lib/supabase'
 import { Button } from '../components/ui/button'
+import { FeedbackBarGraph } from '../components/feedback/FeedbackBarGraph'
+import { TeamFeedbackRanking } from '../components/feedback/TeamFeedbackRanking'
+import { useFeedback } from '../lib/hooks/useFeedback'
 
 interface TicketCounts {
   total: number
@@ -20,6 +23,7 @@ interface TicketCounts {
 
 export function Dashboard() {
   const { profile } = useAuth()
+  const { loading: feedbackLoading, personalStats, teamStats, teamMemberStats } = useFeedback()
   const [counts, setCounts] = useState<TicketCounts>({
     total: 0,
     new: 0,
@@ -162,6 +166,24 @@ export function Dashboard() {
               </Link>
             </div>
           </div>
+
+          <div className="bg-background border border-primary shadow rounded-lg p-6">
+            <h2 className="text-lg font-medium text-primary mb-4">team feedback</h2>
+            {feedbackLoading ? (
+              <div className="text-sm text-primary/70">loading feedback...</div>
+            ) : (
+              <FeedbackBarGraph stats={teamStats} />
+            )}
+          </div>
+
+          <div className="bg-background border border-primary shadow rounded-lg p-6">
+            <h2 className="text-lg font-medium text-primary mb-4">member ratings</h2>
+            {feedbackLoading ? (
+              <div className="text-sm text-primary/70">loading ratings...</div>
+            ) : (
+              <TeamFeedbackRanking members={teamMemberStats} />
+            )}
+          </div>
         </div>
       </div>
     )
@@ -226,6 +248,15 @@ export function Dashboard() {
                 <span className="text-primary">{counts.recently_closed}</span>
               </Link>
             </div>
+          </div>
+
+          <div className="bg-background border border-primary shadow rounded-lg p-6">
+            <h2 className="text-lg font-medium text-primary mb-4">my feedback</h2>
+            {feedbackLoading ? (
+              <div className="text-sm text-primary/70">loading feedback...</div>
+            ) : (
+              <FeedbackBarGraph stats={personalStats} />
+            )}
           </div>
         </div>
       </div>
