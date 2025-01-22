@@ -68,6 +68,19 @@ serve(async (req) => {
       assigningToManager = targetUser.role === 'manager'
     }
 
+    // If assigning to someone, get their team_id
+    let newTeamId = team_id
+    if (assigned_to) {
+      const { data: teamData, error: teamError } = await supabase
+        .from('team_members')
+        .select('team_id')
+        .eq('user_id', assigned_to)
+        .single()
+
+      if (teamError && teamError.code !== 'PGRST116') throw teamError // PGRST116 is "no rows returned"
+      if (teamData) newTeamId = teamData.team_id
+    }
+
     // Build update object based on permissions
     const updateData: any = {}
     
@@ -77,7 +90,7 @@ serve(async (req) => {
       updateData.description = description
       updateData.status = status
       updateData.priority = priority
-      updateData.team_id = team_id
+      updateData.team_id = newTeamId
       updateData.assigned_to = assigned_to
       updateData.restricted = restricted
     } else if (profile.role === 'worker') {
@@ -89,6 +102,7 @@ serve(async (req) => {
       // OR assign to a manager
       if (currentTicket.assigned_to === null || currentTicket.assigned_to === user.id || assigningToManager) {
         updateData.assigned_to = assigned_to
+        updateData.team_id = newTeamId
       }
     } else if (profile.role === 'customer' && currentTicket.created_by === user.id) {
       // Customers can update priority of their tickets

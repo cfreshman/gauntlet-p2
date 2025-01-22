@@ -7,14 +7,24 @@ import { Button } from '../ui/button'
 import { useUsernames } from '../../lib/hooks/useUsernames'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
 import { Switch } from '../ui/switch'
+import { useTeams } from '../../lib/hooks/useTeams'
+
+interface Team {
+  id: string
+  name: string
+  created_at: string
+  created_by: string
+}
 
 interface TicketWithProfile extends Ticket {
   assigned_to: string | null
   created_by: string
+  team_id: string | null
 }
 
 type SortField = 'created_at' | 'priority' | 'status'
 type SortOrder = 'asc' | 'desc'
+type AssignedFilter = 'any' | 'unassigned' | 'my-team' | 'me'
 
 const FILTER_STORAGE_KEY = 'ticket-filters'
 
@@ -25,18 +35,19 @@ const STATUS_ORDER = {
   pending: 2,
   resolved: 3,
   closed: 4
-}
+} as const
 
 const PRIORITY_ORDER = {
   urgent: 0,
   high: 1,
   medium: 2,
   low: 3
-}
+} as const
 
 export function TicketList() {
   const { profile, user } = useAuth()
   const { usernames, fetchUsername } = useUsernames()
+  const { teams } = useTeams()
   const [tickets, setTickets] = useState<TicketWithProfile[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -47,21 +58,44 @@ export function TicketList() {
   // Restore filters from storage if URL is empty
   useEffect(() => {
     if (location.search === '') {
+      // Set role-specific defaults if no stored filters
       const storedFilters = localStorage.getItem(FILTER_STORAGE_KEY)
-      if (storedFilters) {
+      if (storedFilters && profile?.role !== 'customer') {
         setSearchParams(new URLSearchParams(storedFilters))
+      } else if (profile?.role === 'worker') {
+        // Workers default: active tickets assigned to me, sorted by priority
+        setSearchParams(new URLSearchParams({
+          assigned: 'me',
+          status: 'active',
+          sort: 'priority',
+          order: 'asc',
+          view: 'tickets'
+        }))
+      } else if (profile?.role === 'manager') {
+        // Managers default: show unassigned and new tickets first, sorted by priority
+        setSearchParams(new URLSearchParams({
+          status: 'active',
+          assigned: 'unassigned',
+          sort: 'priority',
+          order: 'asc',
+          view: 'tickets'
+        }))
       }
+      // Customers have no URL params - they see all their tickets sorted by date
     }
     setReady(true)
-  }, []) // Only run on mount
+  }, [profile?.role, user?.id]) // Run when role/user changes
 
-  const viewMode = searchParams.get('view') || 'tickets'
-  const statusFilter = searchParams.get('status') || 'all'
-  const priorityFilter = searchParams.get('priority') || 'all'
-  const sortField = (searchParams.get('sort') as SortField) || 'created_at'
-  const sortOrder = (searchParams.get('order') as SortOrder) || 'desc'
-  const assignedFilter = searchParams.get('assigned') || null
-  const closedAfter = searchParams.get('closed_after') || null
+  // For customers, override any URL params to show their tickets by date
+  const viewMode = profile?.role === 'customer' ? 'tickets' : (searchParams.get('view') || 'tickets')
+  const statusFilter = profile?.role === 'customer' ? 'all' : (searchParams.get('status') || 'all')
+  const priorityFilter = profile?.role === 'customer' ? 'all' : (searchParams.get('priority') || 'all')
+  const sortField = profile?.role === 'customer' ? 'created_at' : ((searchParams.get('sort') as SortField) || 'created_at')
+  const sortOrder = profile?.role === 'customer' ? 'desc' : ((searchParams.get('order') as SortOrder) || 'desc')
+  const assignedFilter = profile?.role === 'customer' ? 'any' : ((searchParams.get('assigned') as AssignedFilter) || 'any')
+  const assignedId = searchParams.get('assigned_id')
+  const closedAfter = profile?.role === 'customer' ? null : (searchParams.get('closed_after') || null)
+  const teamFilter = profile?.role === 'customer' ? null : (searchParams.get('team') || null)
 
   // Update URL params helper
   const updateParams = (updates: Record<string, string | null>) => {
@@ -76,12 +110,6 @@ export function TicketList() {
     setSearchParams(newParams)
     // Store the filter configuration
     localStorage.setItem(FILTER_STORAGE_KEY, newParams.toString())
-  }
-
-  // Toggle assigned to me
-  const toggleAssigned = (checked: boolean) => {
-    if (!user) return
-    updateParams({ assigned: checked ? user.id : null })
   }
 
   // Load usernames when tickets change
@@ -158,11 +186,27 @@ export function TicketList() {
       if (priorityFilter !== 'all') {
         query = query.eq('priority', priorityFilter)
       }
-      if (assignedFilter === 'null') {
+
+      // Handle assignment filter
+      if (assignedId) {
+        query = query.eq('assigned_to', assignedId)
+      } else if (assignedFilter === 'unassigned') {
         query = query.is('assigned_to', null)
-      } else if (assignedFilter) {
-        query = query.eq('assigned_to', assignedFilter)
+      } else if (assignedFilter === 'me' && user) {
+        query = query.eq('assigned_to', user.id)
+      } else if (assignedFilter === 'my-team' && user) {
+        // Get user's team first
+        const { data: teamData } = await supabase
+          .from('team_members')
+          .select('team_id')
+          .eq('user_id', user.id)
+          .single()
+
+        if (teamData?.team_id) {
+          query = query.eq('team_id', teamData.team_id)
+        }
       }
+      // 'any' shows all tickets (no filter)
 
       // Apply sorting
       if (sortField === 'status') {
@@ -226,13 +270,30 @@ export function TicketList() {
           <h1 className="text-2xl font-bold text-primary">
             {viewMode === 'templates' ? 'templates' : 'tickets'}
           </h1>
-          {assignedFilter && assignedFilter !== user?.id && assignedFilter !== 'null' && (
-            <span className="text-2xl text-primary/90">
-              assigned to {usernames[assignedFilter] || 'unknown'}
-            </span>
-          )}
-          {assignedFilter === 'null' && (
-            <span className="text-2xl text-primary/90">unassigned</span>
+          {profile?.role !== 'customer' && (
+            <>
+              {assignedId ? (
+                <span className="text-2xl text-primary/90">
+                  assigned to {usernames[assignedId] || 'loading...'}
+                </span>
+              ) : (
+                <>
+                  {assignedFilter === 'me' && (
+                    <span className="text-2xl text-primary/90">
+                      my tickets
+                    </span>
+                  )}
+                  {assignedFilter === 'my-team' && (
+                    <span className="text-2xl text-primary/90">
+                      team tickets
+                    </span>
+                  )}
+                  {assignedFilter === 'unassigned' && (
+                    <span className="text-2xl text-primary/90">unassigned</span>
+                  )}
+                </>
+              )}
+            </>
           )}
         </div>
         <div className="flex gap-2">
@@ -328,14 +389,43 @@ export function TicketList() {
           </div>
 
           <div>
-            <div className="block text-sm text-primary/70 mb-1">&nbsp;</div>
-            <div className="flex items-center gap-2 h-9">
-              <Switch
-                checked={user ? assignedFilter === user.id : false}
-                onCheckedChange={toggleAssigned}
-              />
-              <span className="text-sm text-primary/70">assigned to me</span>
-            </div>
+            <label className="block text-sm text-primary/70 mb-1">assigned to</label>
+            <Select 
+              value={assignedId || assignedFilter} 
+              onValueChange={(value) => {
+                if (value === assignedId) {
+                  // Clear the assigned_id filter
+                  updateParams({ assigned_id: null })
+                } else if (['any', 'unassigned', 'my-team', 'me'].includes(value)) {
+                  // Standard filter selected
+                  updateParams({ 
+                    assigned: value as AssignedFilter,
+                    assigned_id: null 
+                  })
+                } else {
+                  // User ID selected
+                  updateParams({ 
+                    assigned_id: value,
+                    assigned: null
+                  })
+                }
+              }}
+            >
+              <SelectTrigger className="w-[120px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="any">any</SelectItem>
+                <SelectItem value="unassigned">unassigned</SelectItem>
+                <SelectItem value="my-team">my team</SelectItem>
+                <SelectItem value="me">just me</SelectItem>
+                {assignedId && usernames[assignedId] && (
+                  <SelectItem value={assignedId}>
+                    {usernames[assignedId]}
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       )}
@@ -370,7 +460,7 @@ export function TicketList() {
                     <span>
                       {ticket.assigned_to ? (
                         <Link 
-                          to={`/tickets?assigned=${ticket.assigned_to}`}
+                          to={`/tickets?assigned_id=${ticket.assigned_to}`}
                           className="hover:underline"
                           onClick={(e) => e.stopPropagation()}
                         >
