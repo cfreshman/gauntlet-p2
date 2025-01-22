@@ -15,12 +15,7 @@ interface Article {
   version: number;
 }
 
-interface ArticleListProps {
-  onEdit: (article: Article) => void;
-  onCreate: () => void;
-}
-
-export function ArticleList({ onEdit, onCreate }: ArticleListProps) {
+export function ArticleList() {
   const supabase = useSupabase();
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,6 +36,7 @@ export function ArticleList({ onEdit, onCreate }: ArticleListProps) {
 
   async function loadArticles() {
     try {
+      // The RLS policy will automatically filter based on user role
       const { data, error } = await supabase
         .from("kb_articles")
         .select("*")
@@ -73,8 +69,8 @@ export function ArticleList({ onEdit, onCreate }: ArticleListProps) {
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-lg font-bold text-primary">articles</h2>
-        <Button size="sm" variant="outline" onClick={onCreate}>
-          new article
+        <Button size="sm" variant="outline" asChild>
+          <Link to="/kb/new">new article</Link>
         </Button>
       </div>
 
@@ -110,8 +106,8 @@ export function ArticleList({ onEdit, onCreate }: ArticleListProps) {
                 <Button size="sm" variant="ghost" asChild>
                   <Link to={`/help/${article.id}`}>view</Link>
                 </Button>
-                <Button size="sm" variant="ghost" onClick={() => onEdit(article)}>
-                  edit
+                <Button size="sm" variant="ghost" asChild>
+                  <Link to={`/kb/${article.id}/edit`}>edit</Link>
                 </Button>
                 <Button
                   size="sm"

@@ -1,6 +1,6 @@
 # Knowledge Base Implementation Plan
 
-## Current Implementation
+## Week 1 Implementation
 
 ### 1. Storage Setup ✅
 - Create a `kb` bucket in Supabase Storage
@@ -53,7 +53,7 @@
     - Workers can only edit their own articles
   - Handles versioning
 
-### 4. UI Components (In Progress)
+### 4. UI Components ✅
 #### Staff View (`/kb`)
 - List of all articles with:
   - Title
@@ -65,23 +65,22 @@
   - Publish toggle
 - Article viewer with markdown rendering
 
-#### Customer View (`/kb/help`)
+#### Customer View (`/help`) ✅
 - Simple list of published articles
 - Article viewer with markdown rendering
 
-### 5. Implementation Order
-1. ✅ Storage setup
-2. ✅ Database tables
-3. ✅ Basic CRUD function
-4. Staff UI for article management
-5. Customer UI for viewing articles
+## Week 1 Final Tasks
+1. Ticket feedback/rating system
+2. Ticket history view
+3. Bulk operations for tickets
+4. Deliver a 5-min walkthrough video
 
-## Next Week: AI Features
-1. Add tags support for RAG context
-2. Implement semantic search
-3. Add embeddings for article content
-4. Build RAG integration:
-   - Auto-replies using KB
-   - Response suggestions
-   - Context-aware assistance
-   - Smart article recommendations 
+## Week 2 Plans (Starting Jan 27, 2025)
+1. Basic AI features:
+   - Auto-route tickets based on content
+   - Auto-reply for common questions
+   - Suggested responses for agents
+2. Maintain user roles & RLS
+3. AI logic must be optional/toggleable
+4. Integrate with knowledge base
+5. Implement RAG system for context 

@@ -81,6 +81,7 @@ export function ArticleEditor({
   const [content, setContent] = useState(initialContent);
   const [summary, setSummary] = useState(initialSummary);
   const [published, setPublished] = useState(initialPublished);
+  const [takeOwnership, setTakeOwnership] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(!!id);
   const [showHints, setShowHints] = useState(false);
@@ -129,6 +130,7 @@ export function ArticleEditor({
           content,
           summary,
           published: profile?.role === 'manager' ? published : false,
+          takeOwnership,
         },
       });
 
@@ -250,6 +252,17 @@ export function ArticleEditor({
               onCheckedChange={setPublished}
             />
             <Label htmlFor="published">publish article</Label>
+          </div>
+        )}
+
+        {id && (
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="takeOwnership"
+              checked={takeOwnership}
+              onCheckedChange={setTakeOwnership}
+            />
+            <Label htmlFor="takeOwnership">take ownership</Label>
           </div>
         )}
       </div>

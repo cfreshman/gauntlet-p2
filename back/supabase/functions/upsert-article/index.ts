@@ -8,6 +8,7 @@ interface UpsertArticleBody {
   content: string;
   summary?: string;
   published?: boolean;
+  takeOwnership?: boolean;
 }
 
 serve(async (req) => {
@@ -83,7 +84,11 @@ serve(async (req) => {
         .single();
 
       if (existing) {
-        if (profile.role !== "manager" && existing.created_by !== user.id) {
+        // Allow edit if:
+        // 1. User is a manager
+        // 2. User is taking ownership
+        // 3. User owns the article
+        if (profile.role !== "manager" && !body.takeOwnership && existing.created_by !== user.id) {
           return new Response(
             JSON.stringify({ error: "can only edit your own articles" }),
             {
@@ -129,7 +134,7 @@ serve(async (req) => {
           storage_path: storagePath,
           published: body.published ?? false,
           version: version ?? 1,
-          created_by: user.id,
+          created_by: body.id ? (body.takeOwnership ? user.id : undefined) : user.id,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "id" }

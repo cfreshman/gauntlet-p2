@@ -98,6 +98,8 @@ export function Routes() {
       <Route path="/tickets/new" element={<RequireAuth><TicketCreate /></RequireAuth>} />
       <Route path="/tickets/:id" element={<RequireAuth><TicketDetail /></RequireAuth>} />
       <Route path="/kb/*" element={<RequireAuth><KnowledgeBase /></RequireAuth>} />
+      <Route path="/kb/:id/edit" element={<RequireAuth><KnowledgeBase /></RequireAuth>} />
+      <Route path="/kb/new" element={<RequireAuth><KnowledgeBase /></RequireAuth>} />
       <Route path="/logout" element={<Logout />} />
     </RouterRoutes>
   );

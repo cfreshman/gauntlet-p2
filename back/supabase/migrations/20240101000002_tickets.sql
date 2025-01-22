@@ -889,6 +889,14 @@ USING (bucket_id = 'kb' AND EXISTS (
   AND published = true
 ));
 
+CREATE POLICY "Staff can read all articles"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'kb' AND EXISTS (
+  SELECT 1 FROM profiles
+  WHERE id = auth.uid()
+  AND role IN ('worker', 'manager')
+));
+
 CREATE POLICY "Staff can manage articles"
 ON storage.objects FOR ALL
 USING (bucket_id = 'kb' AND EXISTS (

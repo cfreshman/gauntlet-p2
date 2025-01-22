@@ -4,6 +4,7 @@ import { useSupabase } from "../../lib/hooks/useSupabase";
 import { ArticleViewer } from "../../components/kb/ArticleViewer";
 import { Button } from "../../components/ui/button";
 import { useUsernames } from "../../lib/hooks/useUsernames";
+import { useProfile } from "../../lib/hooks/useProfile";
 
 interface Article {
   id: string;
@@ -22,18 +23,23 @@ export default function Help() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const { usernames, fetchUsername } = useUsernames();
+  const { profile, loading: profileLoading } = useProfile();
 
+  // Only load articles after profile is loaded
   useEffect(() => {
-    loadArticles();
-  }, []);
+    if (!profileLoading) {
+      loadArticles();
+    }
+  }, [profileLoading]);
 
+  // Only load article after profile is loaded
   useEffect(() => {
-    if (id) {
+    if (!profileLoading && id) {
       loadArticle(id);
-    } else {
+    } else if (!id) {
       setCurrentArticle(null);
     }
-  }, [id]);
+  }, [id, profileLoading]);
 
   // Load usernames when articles or current article changes
   useEffect(() => {
@@ -49,12 +55,18 @@ export default function Help() {
 
   async function loadArticle(articleId: string) {
     try {
-      const { data, error } = await supabase
+      // Only filter by published for customers
+      let query = supabase
         .from("kb_articles")
         .select("id, title, summary, created_at, created_by")
-        .eq("id", articleId)
-        .eq("published", true)
-        .single();
+        .eq("id", articleId);
+
+      // Only filter by published for non-staff
+      if (!profile?.role || profile.role === 'customer') {
+        query = query.eq("published", true);
+      }
+
+      const { data, error } = await query.single();
 
       if (error) throw error;
       if (data) {
@@ -69,11 +81,18 @@ export default function Help() {
 
   async function loadArticles() {
     try {
-      const { data, error } = await supabase
+      // Only filter by published for customers
+      let query = supabase
         .from("kb_articles")
         .select("id, title, summary, created_at, created_by")
-        .eq("published", true)
         .order("created_at", { ascending: false });
+
+      // Only filter by published for non-staff  
+      if (!profile?.role || profile.role === 'customer') {
+        query = query.eq("published", true);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setArticles(data || []);
@@ -85,7 +104,7 @@ export default function Help() {
     }
   }
 
-  if (loading) {
+  if (profileLoading || loading) {
     return (
       <div className="max-w-5xl mx-auto px-4 py-6">
         <div className="flex h-32 items-center justify-center text-primary/70">
@@ -109,7 +128,6 @@ export default function Help() {
     <div className="max-w-5xl mx-auto px-4 py-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-primary">help center</h1>
-        {!id && <span className="text-sm text-primary/70">{articles.length} articles</span>}
       </div>
       
       {id && currentArticle ? (
