@@ -19,8 +19,8 @@ export function Signup() {
   const location = useLocation();
   const navigate = useNavigate();
   
-  // Properly construct the from path
-  const from = location.state?.from 
+  // Use location state for all redirects
+  const from = location.state?.from
     ? `${location.state.from.pathname}${location.state.from.search || ''}`
     : '/';
 

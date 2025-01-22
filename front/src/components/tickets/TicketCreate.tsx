@@ -175,7 +175,7 @@ export function TicketCreate() {
               {template.ticket_tag_links.map(link => (
                 <div 
                   key={link.tag.id}
-                  className="px-2 py-1 bg-gray-100 rounded-full text-sm"
+                  className="px-2 py-1 border border-primary/20 rounded-full text-sm text-primary/70"
                 >
                   {link.tag.name}
                 </div>

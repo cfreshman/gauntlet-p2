@@ -81,15 +81,15 @@ export function TicketList() {
     setReady(true)
   }, [profile?.role, user?.id]) // Run when role/user changes
 
-  // For customers, override any URL params to show their tickets by date
-  const viewMode = profile?.role === 'customer' ? 'tickets' : (searchParams.get('view') || 'tickets')
-  const statusFilter = profile?.role === 'customer' ? 'all' : (searchParams.get('status') || 'all')
-  const priorityFilter = profile?.role === 'customer' ? 'all' : (searchParams.get('priority') || 'all')
-  const sortField = profile?.role === 'customer' ? 'created_at' : ((searchParams.get('sort') as SortField) || 'created_at')
-  const sortOrder = profile?.role === 'customer' ? 'desc' : ((searchParams.get('order') as SortOrder) || 'desc')
-  const assignedFilter = profile?.role === 'customer' ? 'any' : ((searchParams.get('assigned') as AssignedFilter) || 'any')
+  // Let customers use URL params like everyone else
+  const viewMode = searchParams.get('view') || 'tickets'
+  const statusFilter = searchParams.get('status') || 'all'
+  const priorityFilter = searchParams.get('priority') || 'all'
+  const sortField = (searchParams.get('sort') as SortField) || 'created_at'
+  const sortOrder = (searchParams.get('order') as SortOrder) || 'desc'
+  const assignedFilter = (searchParams.get('assigned') as AssignedFilter) || 'any'
   const assignedId = searchParams.get('assigned_id')
-  const closedAfter = profile?.role === 'customer' ? null : (searchParams.get('closed_after') || null)
+  const closedAfter = searchParams.get('closed_after') || null
   const teamId = searchParams.get('team_id')
 
   // Update URL params helper
@@ -176,6 +176,8 @@ export function TicketList() {
       // Apply filters
       if (statusFilter === 'active') {
         query = query.neq('status', 'closed')
+      } else if (statusFilter === 'unresolved') {
+        query = query.not('status', 'in', '(resolved,closed)')
       } else if (statusFilter === 'closed' && closedAfter === '7d') {
         // Get date 7 days ago
         const sevenDaysAgo = new Date()
@@ -276,7 +278,9 @@ export function TicketList() {
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-bold text-primary">
-            {viewMode === 'templates' ? 'templates' : 'tickets'}
+            {profile?.role === 'customer' && (statusFilter !== 'all' || (searchParams.toString() !== '' && searchParams.toString() !== 'view=tickets'))
+              ? 'filtered tickets'
+              : viewMode === 'templates' ? 'templates' : 'tickets'}
           </h1>
           {profile?.role !== 'customer' && (
             <>
@@ -339,6 +343,7 @@ export function TicketList() {
               <SelectContent>
                 <SelectItem value="all">all</SelectItem>
                 <SelectItem value="active">active</SelectItem>
+                <SelectItem value="unresolved">unresolved</SelectItem>
                 <SelectItem value="new">new</SelectItem>
                 <SelectItem value="open">open</SelectItem>
                 <SelectItem value="pending">pending</SelectItem>

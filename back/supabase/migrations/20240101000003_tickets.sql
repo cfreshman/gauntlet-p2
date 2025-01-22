@@ -905,12 +905,6 @@ USING (bucket_id = 'kb' AND EXISTS (
   AND role IN ('worker', 'manager')
 ));
 
--- Add trigger for setting created_by on ticket_feedback
-create trigger set_ticket_feedback_created_by
-  before insert on ticket_feedback
-  for each row
-  execute function handle_auth_user();
-
 -- Add update/delete policies for feedback
 create policy "Customers can update their own feedback"
   on ticket_feedback for update
@@ -941,3 +935,8 @@ create policy "Managers can delete any feedback"
     )
   );
 
+-- Add auth triggers for created_by fields
+create trigger set_ticket_feedback_created_by
+  before insert on ticket_feedback
+  for each row
+  execute function handle_auth_user();

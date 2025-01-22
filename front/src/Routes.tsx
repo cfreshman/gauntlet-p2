@@ -1,4 +1,4 @@
-import { Navigate, Routes as RouterRoutes, Route, useNavigate } from 'react-router-dom';
+import { Navigate, Routes as RouterRoutes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from './lib/hooks/useAuth';
 import { Login } from './pages/Login';
 import { Signup } from './pages/Signup';
@@ -17,6 +17,7 @@ import Help from './pages/help';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -29,7 +30,8 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) {
-    return <Navigate to="/signup" />;
+    // Pass the current location to redirect back after login
+    return <Navigate to="/signup" state={{ from: location }} />;
   }
 
   return <>{children}</>;

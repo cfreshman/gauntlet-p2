@@ -22,7 +22,7 @@ interface TicketCounts {
 }
 
 export function Dashboard() {
-  const { profile } = useAuth()
+  const { profile, loading: profileLoading } = useAuth()
   const { loading: feedbackLoading, personalStats, teamStats, teamMemberStats } = useFeedback()
   const [counts, setCounts] = useState<TicketCounts>({
     total: 0,
@@ -41,57 +41,117 @@ export function Dashboard() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    loadCounts()
-  }, [])
+    if (!profileLoading && profile) {
+      loadCounts()
+    }
+  }, [profile, profileLoading])
 
-  async function loadCounts() {
+  if (loading && profileLoading) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 py-6">
+        <div className="flex items-center justify-center h-[calc(100vh-12rem)] text-primary/70">
+          loading dashboard...
+        </div>
+      </div>
+    )
+  }
+
+  if (!profile) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 py-6">
+        <div className="flex items-center justify-center h-[calc(100vh-12rem)] text-primary/70">
+          loading profile...
+        </div>
+      </div>
+    )
+  }
+
+  const loadCounts = async () => {
     try {
       // Get date 7 days ago
       const sevenDaysAgo = new Date()
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
 
-      // First get the user's team
-      const { data: teamData, error: teamError } = await supabase
-        .from('team_members')
-        .select('team_id')
-        .eq('user_id', profile?.id)
-        .single()
+      // Only check team membership for workers
+      let teamData = null
+      if (profile.role === 'worker') {
+        const { data, error: teamError } = await supabase
+          .from('team_members')
+          .select('team_id')
+          .eq('user_id', profile.id)
+          .single()
 
-      if (teamError && teamError.code !== 'PGRST116') throw teamError // PGRST116 is "no rows returned"
+        if (teamError && teamError.code !== 'PGRST116') throw teamError // PGRST116 is "no rows returned"
+        teamData = data
+
+        // Workers need a team
+        if (!teamData) {
+          setError('no team assigned')
+          return
+        }
+      }
 
       // Base query will respect RLS policies
       const { data, error } = await supabase
         .from('tickets')
-        .select('status, priority, assigned_to, updated_at, title, team_id')
+        .select('status, priority, assigned_to, updated_at, title, team_id, created_by')
         .not('title', 'like', 'template:%')
 
       if (error) throw error
 
       if (data) {
         // Filter tickets based on role
-        const teamTickets = data.filter(t => t.team_id === teamData?.team_id)
-        const activeTeamTickets = teamTickets.filter(t => t.status !== 'closed' && t.status !== 'resolved')
-        const unclaimedTeamTickets = activeTeamTickets.filter(t => t.assigned_to === null)
-        const noTeamTickets = data.filter(t => t.team_id === null)
-        const activeNoTeamTickets = noTeamTickets.filter(t => t.status !== 'closed' && t.status !== 'resolved')
+        let relevantTickets = []
+        let activeTickets = []
 
-        const newCounts: TicketCounts = {
-          total: activeTeamTickets.length,
-          new: activeTeamTickets.filter(t => t.status === 'new').length,
-          new_assigned: activeTeamTickets.filter(t => t.status === 'new' && t.assigned_to === profile?.id).length,
-          open: activeTeamTickets.filter(t => t.status === 'open').length,
-          pending: activeTeamTickets.filter(t => t.status === 'pending').length,
-          resolved: teamTickets.filter(t => t.status === 'resolved').length,
-          recently_closed: teamTickets.filter(t => 
-            t.status === 'closed' && 
-            new Date(t.updated_at) >= sevenDaysAgo
-          ).length,
-          urgent: activeTeamTickets.filter(t => t.priority === 'urgent').length,
-          high: activeTeamTickets.filter(t => t.priority === 'high').length,
-          assigned: activeTeamTickets.filter(t => t.assigned_to !== null).length,
-          unassigned: profile?.role === 'manager' ? activeNoTeamTickets.length : unclaimedTeamTickets.length
+        if (profile.role === 'customer') {
+          // For customers, show their own tickets
+          relevantTickets = data.filter(t => t.created_by === profile.id)
+          activeTickets = relevantTickets.filter(t => t.status !== 'closed')
+          const unresolvedTickets = relevantTickets.filter(t => t.status !== 'resolved' && t.status !== 'closed')
+
+          setCounts({
+            total: unresolvedTickets.length,
+            new: activeTickets.filter(t => t.status === 'new').length,
+            new_assigned: 0,
+            open: activeTickets.filter(t => t.status === 'open').length,
+            pending: activeTickets.filter(t => t.status === 'pending').length,
+            resolved: relevantTickets.filter(t => t.status === 'resolved').length,
+            recently_closed: relevantTickets.filter(t => 
+              t.status === 'closed' && 
+              new Date(t.updated_at) >= sevenDaysAgo
+            ).length,
+            urgent: activeTickets.filter(t => t.priority === 'urgent').length,
+            high: activeTickets.filter(t => t.priority === 'high').length,
+            assigned: activeTickets.filter(t => t.assigned_to !== null).length,
+            unassigned: relevantTickets.filter(t => t.assigned_to === null).length
+          })
+        } else {
+          // For workers/managers, show team tickets
+          relevantTickets = data.filter(t => t.team_id === teamData?.team_id)
+          activeTickets = relevantTickets.filter(t => t.status !== 'closed')
+
+          const unclaimedTeamTickets = activeTickets.filter(t => t.assigned_to === null)
+          const noTeamTickets = data.filter(t => t.team_id === null)
+          const activeNoTeamTickets = noTeamTickets.filter(t => t.status !== 'closed')
+
+          setCounts({
+            total: activeTickets.length,
+            new: activeTickets.filter(t => t.status === 'new').length,
+            new_assigned: activeTickets.filter(t => t.status === 'new' && t.assigned_to === profile.id).length,
+            open: activeTickets.filter(t => t.status === 'open').length,
+            pending: activeTickets.filter(t => t.status === 'pending').length,
+            resolved: relevantTickets.filter(t => t.status === 'resolved').length,
+            recently_closed: relevantTickets.filter(t => 
+              t.status === 'closed' && 
+              new Date(t.updated_at) >= sevenDaysAgo
+            ).length,
+            urgent: activeTickets.filter(t => t.priority === 'urgent').length,
+            high: activeTickets.filter(t => t.priority === 'high').length,
+            assigned: activeTickets.filter(t => t.assigned_to !== null).length,
+            unassigned: profile.role === 'manager' ? activeNoTeamTickets.length : unclaimedTeamTickets.length
+          })
         }
-        setCounts(newCounts)
       }
     } catch (e) {
       console.error('Error loading counts:', e)
@@ -101,16 +161,24 @@ export function Dashboard() {
     }
   }
 
-  if (loading) return (
-    <div className="max-w-5xl mx-auto px-4 py-6">
-      <div className="flex items-center justify-center h-[calc(100vh-12rem)] text-primary/70">
-        loading dashboard...
+  if (error) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 py-6">
+        <div className="flex items-center justify-center h-[calc(100vh-12rem)]">
+          <div className="text-center">
+            <div className="text-red-600 mb-4">{error}</div>
+            {error === 'no team assigned' && profile.role === 'worker' && (
+              <div className="text-primary/70">
+                please wait to be assigned to a team by a manager
+              </div>
+            )}
+          </div>
+        </div>
       </div>
-    </div>
-  )
-  if (error) return <div className="text-red-600">failed to {error}</div>
+    )
+  }
 
-  if (profile?.role === 'manager') {
+  if (profile.role === 'manager') {
     return (
       <div className="max-w-5xl mx-auto px-4 py-6">
         <div className="flex justify-between items-center mb-6">
@@ -189,7 +257,7 @@ export function Dashboard() {
     )
   }
 
-  if (profile?.role === 'worker') {
+  if (profile.role === 'worker') {
     return (
       <div className="max-w-5xl mx-auto px-4 py-6">
         <div className="flex justify-between items-center mb-6">
@@ -205,19 +273,19 @@ export function Dashboard() {
           <div className="bg-background border border-primary shadow rounded-lg p-6">
             <h2 className="text-lg font-medium text-primary mb-4">ticket overview</h2>
             <div className="space-y-2">
-              <Link to="/tickets?status=new&assigned=my-team" className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
+              <Link to="/tickets?status=new&assigned=my-team&view=tickets" className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
                 <span className="text-primary">new team tickets</span>
                 <span className="text-primary">{counts.new}</span>
               </Link>
-              <Link to={`/tickets?assigned=me&status=active`} className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
+              <Link to={`/tickets?assigned=me&status=active&view=tickets`} className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
                 <span className="text-primary">assigned to me</span>
                 <span className="text-primary">{counts.assigned}</span>
               </Link>
-              <Link to={`/tickets?priority=urgent&assigned=me&status=active`} className="flex justify-between px-2 py-1 rounded-md hover:bg-red-500/5">
+              <Link to={`/tickets?priority=urgent&assigned=me&status=active&view=tickets`} className="flex justify-between px-2 py-1 rounded-md hover:bg-red-500/5">
                 <span className="text-red-500">urgent</span>
                 <span className="text-red-500">{counts.urgent}</span>
               </Link>
-              <Link to={`/tickets?priority=high&assigned=me&status=active`} className="flex justify-between px-2 py-1 rounded-md hover:bg-orange-500/5">
+              <Link to={`/tickets?priority=high&assigned=me&status=active&view=tickets`} className="flex justify-between px-2 py-1 rounded-md hover:bg-orange-500/5">
                 <span className="text-orange-500">high</span>
                 <span className="text-orange-500">{counts.high}</span>
               </Link>
@@ -227,23 +295,23 @@ export function Dashboard() {
           <div className="bg-background border border-primary shadow rounded-lg p-6">
             <h2 className="text-lg font-medium text-primary mb-4">ticket status</h2>
             <div className="space-y-2">
-              <Link to="/tickets?status=new&assigned=me" className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
+              <Link to="/tickets?status=new&assigned=me&view=tickets" className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
                 <span className="text-primary">new</span>
                 <span className="text-primary">{counts.new_assigned}</span>
               </Link>
-              <Link to="/tickets?status=open&assigned=me" className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
+              <Link to="/tickets?status=open&assigned=me&view=tickets" className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
                 <span className="text-primary">open</span>
                 <span className="text-primary">{counts.open}</span>
               </Link>
-              <Link to="/tickets?status=pending&assigned=me" className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
+              <Link to="/tickets?status=pending&assigned=me&view=tickets" className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
                 <span className="text-primary">pending</span>
                 <span className="text-primary">{counts.pending}</span>
               </Link>
-              <Link to="/tickets?status=resolved&assigned=me" className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
+              <Link to="/tickets?status=resolved&assigned=me&view=tickets" className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
                 <span className="text-primary">resolved</span>
                 <span className="text-primary">{counts.resolved}</span>
               </Link>
-              <Link to="/tickets?status=closed&assigned=me&closed_after=7d" className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
+              <Link to="/tickets?status=closed&assigned=me&closed_after=7d&view=tickets" className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
                 <span className="text-primary">recently closed</span>
                 <span className="text-primary">{counts.recently_closed}</span>
               </Link>
@@ -279,15 +347,15 @@ export function Dashboard() {
         <div className="bg-background border border-primary shadow rounded-lg p-6">
           <h2 className="text-lg font-medium text-primary mb-4">ticket status</h2>
           <div className="space-y-2">
-            <Link to="/tickets?status=active" className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
-              <span className="text-primary">open tickets</span>
-              <span className="text-primary">{counts.new + counts.open + counts.pending}</span>
+            <Link to="/tickets?status=unresolved&view=tickets" className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
+              <span className="text-primary">unresolved tickets</span>
+              <span className="text-primary">{counts.total}</span>
             </Link>
-            <Link to="/tickets?status=resolved" className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
+            <Link to="/tickets?status=resolved&view=tickets" className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
               <span className="text-primary">resolved</span>
               <span className="text-primary">{counts.resolved}</span>
             </Link>
-            <Link to="/tickets?status=closed&closed_after=7d" className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
+            <Link to="/tickets?status=closed&closed_after=7d&view=tickets" className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
               <span className="text-primary">recently closed</span>
               <span className="text-primary">{counts.recently_closed}</span>
             </Link>
