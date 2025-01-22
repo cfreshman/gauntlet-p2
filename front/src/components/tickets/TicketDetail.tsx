@@ -57,6 +57,7 @@ export function TicketDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [updatingTicket, setUpdatingTicket] = useState(false)
+  const [updatingComment, setUpdatingComment] = useState(false)
   const { getAssignableMembers } = useTeammates(profile?.id)
   const { fields, values, updateValue, loadFields } = useCustomFields(id)
   const { fields: allFields } = useFieldDefinitions()
@@ -122,6 +123,17 @@ export function TicketDetail() {
           schema: 'public',
           table: 'ticket_comments',
           filter: `ticket_id=eq.${id}`
+        },
+        () => {
+          loadComments()
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'ticket_comments',
         },
         () => {
           loadComments()
@@ -288,7 +300,7 @@ export function TicketDetail() {
   async function handleSubmitComment(e: React.FormEvent) {
     e.preventDefault()
     if (!user || !ticket || !newComment.trim()) return
-    setUpdatingTicket(true)
+    setUpdatingComment(true)
 
     try {
       const { error } = await supabase.functions.invoke('create-comment', {
@@ -306,7 +318,7 @@ export function TicketDetail() {
       console.error('Error creating comment:', e)
       setError('failed to create comment')
     } finally {
-      setUpdatingTicket(false)
+      setUpdatingComment(false)
     }
   }
 
@@ -321,6 +333,7 @@ export function TicketDetail() {
         .eq('id', commentId)
 
       if (error) throw error
+      setComments(prev => prev.filter(c => c.id !== commentId))
     } catch (e) {
       console.error('Error deleting comment:', e)
       setError('failed to delete comment')
@@ -726,7 +739,7 @@ export function TicketDetail() {
 
             <div>
               <span className="text-sm text-primary/70">priority</span>
-              {profile?.role === 'manager' || ticket.created_by === user?.id ? (
+              {(profile?.role === 'manager' || (profile?.role === 'customer' && ticket.created_by === user?.id)) ? (
                 <Select
                   value={ticket.priority}
                   onValueChange={(value) => handlePriorityChange(value as TicketPriority)}
@@ -755,7 +768,7 @@ export function TicketDetail() {
                     className="flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-full text-sm"
                   >
                     {tag.name}
-                    {isManagerOrWorker && (
+                    {(profile?.role === 'manager' || (profile?.role === 'worker' && ticket.assigned_to === user?.id)) && (
                       <button
                         type="button"
                         onClick={async () => {
@@ -773,7 +786,7 @@ export function TicketDetail() {
                     )}
                   </div>
                 ))}
-                {isManagerOrWorker && (
+                {(profile?.role === 'manager' || (profile?.role === 'worker' && ticket.assigned_to === user?.id)) && (
                   <Popover open={tagSearchOpen} onOpenChange={setTagSearchOpen}>
                     <PopoverTrigger asChild>
                       <button className="flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-full text-sm hover:bg-primary/20">
@@ -993,6 +1006,12 @@ export function TicketDetail() {
                   onChange={(e) => setNewComment(e.target.value)}
                   placeholder="write your comment..."
                   className="w-full"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && e.shiftKey && newComment.trim()) {
+                      e.preventDefault()
+                      handleSubmitComment(e)
+                    }
+                  }}
                 />
               </div>
               {isManagerOrWorker && (
@@ -1005,7 +1024,7 @@ export function TicketDetail() {
                   <Label htmlFor="internal" className="text-primary">internal comment</Label>
                 </div>
               )}
-              <Button type="submit" disabled={!newComment.trim()}>
+              <Button type="submit" disabled={!newComment.trim() || updatingComment}>
                 add comment
               </Button>
             </form>
