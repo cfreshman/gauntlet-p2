@@ -66,5 +66,6 @@ supabase functions deploy sign-in-with-username --project-ref $PROJECT_REF
 supabase functions deploy reset-password --project-ref $PROJECT_REF
 supabase functions deploy invite-team-member --project-ref $PROJECT_REF
 supabase functions deploy get-template --project-ref $PROJECT_REF
+supabase functions deploy upsert-article --project-ref $PROJECT_REF
 
 echo "All functions deployed to $1 project: $PROJECT_REF" 

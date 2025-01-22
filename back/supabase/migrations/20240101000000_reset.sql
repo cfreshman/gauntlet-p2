@@ -70,6 +70,10 @@ BEGIN
       quote_ident(r.schemaname) || '.' || quote_ident(r.tablename);
   END LOOP;
 
+  -- Clean storage
+  DELETE FROM storage.objects;
+  DELETE FROM storage.buckets;
+
   -- Reset RLS
   SET session_replication_role = 'origin';
 END $$;

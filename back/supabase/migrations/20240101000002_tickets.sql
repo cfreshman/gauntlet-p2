@@ -460,8 +460,10 @@ create policy "Everyone can view skills"
 create table kb_articles (
   id uuid default gen_random_uuid() primary key,
   title text not null,
-  content text not null,
+  summary text,
+  storage_path text not null,
   published boolean not null default false,
+  version integer not null default 1,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   created_by uuid references auth.users(id) on delete set null
@@ -872,4 +874,26 @@ create policy "Can delete tags on updatable tickets"
       )
     )
   );
+
+-- Create KB bucket
+INSERT INTO storage.buckets (id, name)
+VALUES ('kb', 'kb')
+ON CONFLICT DO NOTHING;
+
+-- KB Storage Policies
+CREATE POLICY "Anyone can read published articles"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'kb' AND EXISTS (
+  SELECT 1 FROM kb_articles
+  WHERE storage_path = name
+  AND published = true
+));
+
+CREATE POLICY "Staff can manage articles"
+ON storage.objects FOR ALL
+USING (bucket_id = 'kb' AND EXISTS (
+  SELECT 1 FROM profiles
+  WHERE id = auth.uid()
+  AND role IN ('worker', 'manager')
+));
 

@@ -16,10 +16,8 @@ import { useTags } from '../../lib/hooks/useTags'
 import { useTicketTags } from '../../lib/hooks/useTicketTags'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '../ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
-import { ChevronsUpDown } from 'lucide-react'
+import { ChevronsUpDown, TrashIcon } from 'lucide-react'
 import { Switch } from '../ui/switch'
-import { Link } from 'react-router-dom'
-import { PencilIcon, TrashIcon } from 'lucide-react'
 import { Label } from '../ui/label'
 
 interface Comment {
@@ -49,7 +47,6 @@ export function TicketDetail() {
   const [isInternal, setIsInternal] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [updatingComment, setUpdatingComment] = useState(false)
   const [updatingTicket, setUpdatingTicket] = useState(false)
   const { getAssignableMembers } = useTeammates(profile?.id)
   const { fields, values, updateValue, loadFields } = useCustomFields(id)
@@ -231,45 +228,34 @@ export function TicketDetail() {
     }
   }
 
-  async function handleCommentSubmit(e: React.FormEvent) {
+  async function handleSubmitComment(e: React.FormEvent) {
     e.preventDefault()
     if (!user || !ticket || !newComment.trim()) return
-    setUpdatingComment(true)
+    setUpdatingTicket(true)
 
     try {
-      const { error } = await supabase
-        .from('ticket_comments')
-        .insert({
+      const { error } = await supabase.functions.invoke('create-comment', {
+        body: {
           ticket_id: ticket.id,
           content: newComment.trim(),
           internal: isInternal,
-          created_by: user.id
-        })
-        .select()
-        .single()
+        },
+      })
 
       if (error) throw error
       setNewComment('')
       setIsInternal(false)
-      await loadComments()
     } catch (e) {
       console.error('Error creating comment:', e)
       setError('failed to create comment')
     } finally {
-      setUpdatingComment(false)
-    }
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && e.shiftKey) {
-      e.preventDefault()
-      handleCommentSubmit(e)
+      setUpdatingTicket(false)
     }
   }
 
   async function handleDeleteComment(commentId: string) {
     if (!user || !ticket) return
-    setUpdatingComment(true)
+    setUpdatingTicket(true)
 
     try {
       const { error } = await supabase
@@ -278,12 +264,11 @@ export function TicketDetail() {
         .eq('id', commentId)
 
       if (error) throw error
-      await loadComments()
     } catch (e) {
       console.error('Error deleting comment:', e)
       setError('failed to delete comment')
     } finally {
-      setUpdatingComment(false)
+      setUpdatingTicket(false)
     }
   }
 
@@ -747,12 +732,11 @@ export function TicketDetail() {
 
           <div className="mt-6 pt-4 border-t border-primary/20">
             <h3 className="text-sm font-medium text-primary mb-4">add comment</h3>
-            <form onSubmit={handleCommentSubmit} className="space-y-4">
+            <form onSubmit={handleSubmitComment} className="space-y-4">
               <div>
                 <Textarea 
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
-                  onKeyDown={handleKeyDown}
                   placeholder="write your comment..."
                   className="w-full"
                 />

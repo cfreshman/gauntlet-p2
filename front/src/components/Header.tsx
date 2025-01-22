@@ -28,6 +28,22 @@ export function Header() {
             >
               tickets
             </Link>
+            {(profile.role === 'worker' || profile.role === 'manager') && (
+              <Link 
+                to="/kb"
+                className="text-sm text-primary/70 hover:text-primary"
+              >
+                knowledge
+              </Link>
+            )}
+            {profile.role === 'customer' && (
+              <Link 
+                to="/help"
+                className="text-sm text-primary/70 hover:text-primary"
+              >
+                help center
+              </Link>
+            )}
           </nav>
         )}
       </div>

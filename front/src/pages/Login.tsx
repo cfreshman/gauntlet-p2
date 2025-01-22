@@ -41,7 +41,7 @@ export function Login() {
           <CardContent className="pt-4">
             <div className="text-center mb-4">
               <h1 className="text-lg font-semibold">auto-crm</h1>
-              <p className="text-sm text-gray-600">sign in to your account</p>
+              <p className="text-sm text-primary/70">sign in to your account</p>
             </div>
             {error && (
               <p className="mb-2 text-sm text-destructive">{error}</p>

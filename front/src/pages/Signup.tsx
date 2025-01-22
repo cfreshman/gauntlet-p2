@@ -69,9 +69,9 @@ export function Signup() {
           <CardContent className="pt-4">
             <div className="text-center mb-4">
               {inviteRole ? (
-                <p className="text-sm text-gray-600 mb-2">create {inviteRole} account</p>
+                <p className="text-sm text-primary/70 mb-2">create {inviteRole} account</p>
               ) : (
-                <p className="text-sm text-gray-600 mb-2">create your account</p>
+                <p className="text-sm text-primary/70 mb-2">create your account</p>
               )}
             </div>
             {error && (

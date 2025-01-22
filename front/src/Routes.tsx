@@ -12,6 +12,8 @@ import { TicketCreate } from './components/tickets/TicketCreate';
 import { TicketDetail } from './components/tickets/TicketDetail';
 import { Logout } from './pages/Logout';
 import { useEffect } from 'react';
+import KnowledgeBase from './pages/kb';
+import Help from './pages/help';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -27,7 +29,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/signup" />;
   }
 
   return <>{children}</>;
@@ -80,51 +82,23 @@ export function Routes() {
   return (
     <RouterRoutes>
       <Route path="/" element={<Home />} />
-      <Route path="/login" element={
-        <RequireGuest>
-          <Login />
-        </RequireGuest>
-      } />
-      <Route path="/signup" element={
-        <RequireGuest>
-          <Signup />
-        </RequireGuest>
-      } />
-      <Route path="/settings" element={
-        <RequireAuth>
-          <Settings />
-        </RequireAuth>
-      } />
-      <Route path="/reset-password" element={
-        <RequireGuest>
-          <ResetPassword />
-        </RequireGuest>
-      } />
-      <Route path="/update-password" element={
-        <RequireAuth>
-          <UpdatePassword />
-        </RequireAuth>
-      } />
-      <Route path="/tickets" element={
-        <RequireAuth>
-          <TicketList />
-        </RequireAuth>
-      } />
-      <Route path="/tickets/new" element={
-        <RequireAuth>
-          <TicketCreate />
-        </RequireAuth>
-      } />
-      <Route path="/tickets/:id" element={
-        <RequireAuth>
-          <TicketDetail />
-        </RequireAuth>
-      } />
-      <Route path="/logout" element={
-        <RequireAuth>
-          <Logout />
-        </RequireAuth>
-      } />
+      <Route path="/help/:id" element={<Help />} />
+      <Route path="/help" element={<Help />} />
+      
+      {/* Guest routes */}
+      <Route path="/login" element={<RequireGuest><Login /></RequireGuest>} />
+      <Route path="/signup" element={<RequireGuest><Signup /></RequireGuest>} />
+      <Route path="/reset-password" element={<RequireGuest><ResetPassword /></RequireGuest>} />
+      <Route path="/update-password" element={<RequireGuest><UpdatePassword /></RequireGuest>} />
+      
+      {/* Protected routes */}
+      <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
+      <Route path="/settings/*" element={<RequireAuth><Settings /></RequireAuth>} />
+      <Route path="/tickets" element={<RequireAuth><TicketList /></RequireAuth>} />
+      <Route path="/tickets/new" element={<RequireAuth><TicketCreate /></RequireAuth>} />
+      <Route path="/tickets/:id" element={<RequireAuth><TicketDetail /></RequireAuth>} />
+      <Route path="/kb/*" element={<RequireAuth><KnowledgeBase /></RequireAuth>} />
+      <Route path="/logout" element={<Logout />} />
     </RouterRoutes>
   );
 } 

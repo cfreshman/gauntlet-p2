@@ -64,6 +64,10 @@ rm supabase/config.toml.bak
 echo "Linking project..."
 supabase link --project-ref $PROJECT_REF
 
+# Reset migrations state
+echo "Resetting migration state..."
+supabase migration repair --linked --status reverted
+
 # Run migrations (this will run our reset migration first, then recreate everything)
 echo "Running migrations..."
 SUPABASE_ACCESS_TOKEN="$PLATFORM_KEY" supabase migration up --linked
