@@ -88,7 +88,13 @@ export function Dashboard() {
     }
   }
 
-  if (loading) return <div className="text-primary">loading dashboard...</div>
+  if (loading) return (
+    <div className="max-w-5xl mx-auto px-4 py-6">
+      <div className="flex items-center justify-center h-[calc(100vh-12rem)] text-primary/70">
+        loading dashboard...
+      </div>
+    </div>
+  )
   if (error) return <div className="text-red-600">failed to {error}</div>
 
   if (profile?.role === 'manager') {

@@ -116,7 +116,11 @@ export function UnclaimedWorkers() {
   }
 
   if (!profile || profile.role !== 'manager') return null
-  if (loading) return <div>loading workers...</div>
+  if (loading) return (
+    <div className="flex items-center justify-center h-32 text-primary/70">
+      loading workers...
+    </div>
+  )
   if (!teamId) return null
   if (workers.length === 0) return null
 

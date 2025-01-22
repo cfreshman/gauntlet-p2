@@ -139,7 +139,11 @@ export function PendingInvites() {
   }
 
   if (!profile || profile.role !== 'manager') return null
-  if (loading) return <div>loading invites...</div>
+  if (loading) return (
+    <div className="flex items-center justify-center h-32 text-primary/70">
+      loading invites...
+    </div>
+  )
   if (!teamMember) return <div>create a team to manage invites</div>
 
   return (

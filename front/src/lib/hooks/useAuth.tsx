@@ -299,6 +299,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     updateEmail,
   };
 
+  if (loading) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 py-6">
+        <div className="flex items-center justify-center h-[calc(100vh-12rem)] text-primary/70">
+          loading...
+        </div>
+      </div>
+    );
+  }
+
   return (
     <AuthContext.Provider value={value}>
       {children}

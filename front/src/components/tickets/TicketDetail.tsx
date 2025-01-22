@@ -336,7 +336,13 @@ export function TicketDetail() {
     }
   }, [])
 
-  if (loading) return <div>loading ticket...</div>
+  if (loading) return (
+    <div className="max-w-5xl mx-auto px-4 py-6">
+      <div className="flex items-center justify-center h-[calc(100vh-12rem)] text-primary/70">
+        loading ticket...
+      </div>
+    </div>
+  )
   if (!ticket) return <div>ticket not found</div>
 
   const isAssignedToMe = ticket.assigned_to === user?.id

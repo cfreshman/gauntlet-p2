@@ -66,7 +66,11 @@ export default function TeamMembers() {
   }
 
   if (!profile || (profile.role !== 'manager' && profile.role !== 'worker')) return null
-  if (loading) return <div>loading workers...</div>
+  if (loading) return (
+    <div className="flex items-center justify-center h-32 text-primary/70">
+      loading workers...
+    </div>
+  )
   if (!teamMember) return profile.role === 'manager' ? <div>create a team to manage workers</div> : null
 
   return (

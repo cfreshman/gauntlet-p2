@@ -29,7 +29,11 @@ export function FieldManager({ teamId }: FieldManagerProps) {
   } = useFieldDefinitions(teamId || undefined)
 
   if (!teamId) return null
-  if (loading) return <div>loading fields...</div>
+  if (loading) return (
+    <div className="flex items-center justify-center h-32 text-primary/70">
+      loading fields...
+    </div>
+  )
   if (fieldsError) return <div className="text-sm text-red-600">{fieldsError}</div>
 
   async function handleCreateField(e: React.FormEvent) {
