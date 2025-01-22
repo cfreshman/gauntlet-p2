@@ -19,9 +19,9 @@ export function CustomFields({ fields, values, onChange }: CustomFieldsProps) {
     <div className="space-y-2">
       {fields.map(field => (
         <div key={field.id}>
-          <label className="flex items-center gap-1 text-sm">
+          <label className="flex items-center gap-1 text-sm text-primary/70">
             {field.name}
-            {field.required && <span className="text-muted-foreground">*</span>}
+            {field.required && <span className="text-primary/70">*</span>}
           </label>
           
           {field.type === 'boolean' ? (

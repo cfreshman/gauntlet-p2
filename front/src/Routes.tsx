@@ -17,7 +17,13 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <div>loading...</div>;
+    return (
+      <div className="max-w-5xl mx-auto px-4 py-6">
+        <div className="flex items-center justify-center h-[calc(100vh-12rem)] text-primary/70">
+          loading...
+        </div>
+      </div>
+    );
   }
 
   if (!user) {
@@ -53,7 +59,13 @@ function Home() {
   const { user, loading } = useAuth();
   
   if (loading) {
-    return null; // or a loading spinner
+    return (
+      <div className="max-w-5xl mx-auto px-4 py-6">
+        <div className="flex items-center justify-center h-[calc(100vh-12rem)] text-primary/70">
+          loading...
+        </div>
+      </div>
+    );
   }
 
   if (!user) {

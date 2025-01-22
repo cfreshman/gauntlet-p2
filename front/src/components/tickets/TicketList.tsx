@@ -163,23 +163,35 @@ export function TicketList() {
     }
   }
 
-  if (loading) return <div>loading tickets...</div>
-  if (error) return <div>{error}</div>
+  if (loading) return (
+    <div className="max-w-5xl mx-auto px-4 py-6">
+      <div className="flex items-center justify-center h-32 text-primary/70">
+        loading tickets...
+      </div>
+    </div>
+  )
+  if (error) return (
+    <div className="max-w-5xl mx-auto px-4 py-6">
+      <div className="flex items-center justify-center h-32 text-red-500">
+        {error}
+      </div>
+    </div>
+  )
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6">
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-bold">
+          <h1 className="text-2xl font-bold text-primary">
             {viewMode === 'templates' ? 'templates' : 'tickets'}
           </h1>
           {assignedFilter && assignedFilter !== user?.id && assignedFilter !== 'null' && (
-            <span className="text-2xl">
+            <span className="text-2xl text-primary/90">
               assigned to {usernames[assignedFilter] || 'unknown'}
             </span>
           )}
           {assignedFilter === 'null' && (
-            <span className="text-2xl">unassigned</span>
+            <span className="text-2xl text-primary/90">unassigned</span>
           )}
         </div>
         <div className="flex gap-2">
@@ -202,7 +214,7 @@ export function TicketList() {
       {profile?.role !== 'customer' && (
         <div className="flex gap-4 mb-4">
           <div>
-            <label className="block text-sm text-gray-500 mb-1">status</label>
+            <label className="block text-sm text-primary/70 mb-1">status</label>
             <Select 
               value={statusFilter} 
               onValueChange={(value) => updateParams({ status: value === 'all' ? null : value })}
@@ -223,7 +235,7 @@ export function TicketList() {
           </div>
 
           <div>
-            <label className="block text-sm text-gray-500 mb-1">priority</label>
+            <label className="block text-sm text-primary/70 mb-1">priority</label>
             <Select 
               value={priorityFilter} 
               onValueChange={(value) => updateParams({ priority: value === 'all' ? null : value })}
@@ -242,7 +254,7 @@ export function TicketList() {
           </div>
 
           <div>
-            <label className="block text-sm text-gray-500 mb-1">sort by</label>
+            <label className="block text-sm text-primary/70 mb-1">sort by</label>
             <Select 
               value={sortField} 
               onValueChange={(value) => updateParams({ sort: value })}
@@ -259,7 +271,7 @@ export function TicketList() {
           </div>
 
           <div>
-            <label className="block text-sm text-gray-500 mb-1">order</label>
+            <label className="block text-sm text-primary/70 mb-1">order</label>
             <Select 
               value={sortOrder} 
               onValueChange={(value) => updateParams({ order: value })}
@@ -275,42 +287,42 @@ export function TicketList() {
           </div>
 
           <div>
-            <div className="block text-sm text-gray-500 mb-1">&nbsp;</div>
+            <div className="block text-sm text-primary/70 mb-1">&nbsp;</div>
             <div className="flex items-center gap-2 h-9">
               <Switch
                 checked={user ? assignedFilter === user.id : false}
                 onCheckedChange={toggleAssigned}
               />
-              <span className="text-sm">assigned to me</span>
+              <span className="text-sm text-primary/70">assigned to me</span>
             </div>
           </div>
         </div>
       )}
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="divide-y divide-gray-200">
+      <div className="bg-background border border-primary shadow rounded-lg overflow-hidden">
+        <div className="divide-y divide-primary/20">
           {tickets.map(ticket => (
-            <div key={ticket.id} className="hover:bg-gray-50 p-4">
+            <div key={ticket.id} className="hover:bg-primary/5 p-4">
               <Link 
                 to={`/tickets/${ticket.id}`}
                 className="block"
               >
-                <div className="text-lg font-medium text-blue-600 hover:text-blue-900 mb-1">
+                <div className="text-lg font-medium text-primary hover:text-primary/90 mb-1">
                   {ticket.title}
                 </div>
-                <div className="text-sm text-gray-500 flex gap-4">
+                <div className="text-sm text-primary/70 flex gap-4">
                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                    ticket.status === 'new' ? 'bg-blue-100 text-blue-800' :
-                    ticket.status === 'open' ? 'bg-green-100 text-green-800' :
-                    ticket.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                    ticket.status === 'resolved' ? 'bg-purple-100 text-purple-800' :
-                    'bg-gray-100 text-gray-800'
+                    ticket.status === 'new' ? 'bg-blue-500/10 text-blue-500' :
+                    ticket.status === 'open' ? 'bg-green-500/10 text-green-500' :
+                    ticket.status === 'pending' ? 'bg-yellow-500/10 text-yellow-500' :
+                    ticket.status === 'resolved' ? 'bg-purple-500/10 text-purple-500' :
+                    'bg-primary/10 text-primary'
                   }`}>{ticket.status}</span>
                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                    ticket.priority === 'urgent' ? 'bg-red-100 text-red-800' :
-                    ticket.priority === 'high' ? 'bg-orange-100 text-orange-800' :
-                    ticket.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-green-100 text-green-800'
+                    ticket.priority === 'urgent' ? 'bg-red-500/10 text-red-500' :
+                    ticket.priority === 'high' ? 'bg-orange-500/10 text-orange-500' :
+                    ticket.priority === 'medium' ? 'bg-yellow-500/10 text-yellow-500' :
+                    'bg-green-500/10 text-green-500'
                   }`}>{ticket.priority}</span>
                   <span>by {usernames[ticket.created_by] || 'unknown'}</span>
                   <span>

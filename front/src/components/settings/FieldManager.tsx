@@ -3,6 +3,7 @@ import { useFieldDefinitions } from '../../lib/hooks/useFieldDefinitions'
 import { useAuth } from '../../lib/hooks/useAuth'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
+import { Switch } from '../../components/ui/switch'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../components/ui/dropdown-menu'
 
 interface FieldManagerProps {
@@ -54,7 +55,7 @@ export function FieldManager({ teamId }: FieldManagerProps) {
 
       <form onSubmit={handleCreateField} className="space-y-4">
         <div className="space-y-2">
-          <label className="text-sm text-gray-600">name</label>
+          <label className="text-sm text-primary/70">name</label>
           <Input
             type="text"
             value={name}
@@ -64,7 +65,7 @@ export function FieldManager({ teamId }: FieldManagerProps) {
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm text-gray-600">type</label>
+          <label className="text-sm text-primary/70">type</label>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="w-full justify-start">
@@ -81,13 +82,11 @@ export function FieldManager({ teamId }: FieldManagerProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
+          <Switch
             checked={required}
-            onChange={e => setRequired(e.target.checked)}
-            className="h-4 w-4 rounded border-gray-300"
+            onCheckedChange={setRequired}
           />
-          <label className="text-sm text-gray-600">required</label>
+          <label className="text-sm text-primary/70">required</label>
         </div>
 
         {error && <p className="text-sm text-red-600">{error}</p>}
@@ -104,7 +103,7 @@ export function FieldManager({ teamId }: FieldManagerProps) {
             <div key={field.id} className="flex items-center justify-between">
               <div>
                 <div className="font-medium">{field.name}</div>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-primary/70">
                   {field.type} {field.required && '(required)'}
                 </div>
               </div>
@@ -138,7 +137,7 @@ export function FieldManager({ teamId }: FieldManagerProps) {
             <div key={field.id} className="flex items-center justify-between">
               <div>
                 <div className="font-medium">{field.name}</div>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-primary/70">
                   {field.type} {field.required && '(required)'}
                 </div>
               </div>

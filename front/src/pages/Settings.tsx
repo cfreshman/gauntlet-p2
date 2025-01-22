@@ -184,7 +184,7 @@ export function Settings() {
                 <CardContent className="space-y-4 pt-4">
                   <form onSubmit={handleCreateTeam}>
                     <div className="space-y-2">
-                      <label className="text-sm text-gray-600">team name</label>
+                      <label className="text-sm text-primary/70">team name</label>
                       <Input
                         type="text"
                         value={teamName}
@@ -224,7 +224,7 @@ export function Settings() {
           <CardContent className="space-y-4 pt-4">
             <form onSubmit={handleSubmit}>
               <div className="space-y-2">
-                <label className="text-sm text-gray-600">username</label>
+                <label className="text-sm text-primary/70">username</label>
                 <Input
                   type="text"
                   value={username}
@@ -244,7 +244,7 @@ export function Settings() {
 
             <form onSubmit={handlePasswordSubmit}>
               <div className="space-y-2">
-                <label className="text-sm text-gray-600">new password</label>
+                <label className="text-sm text-primary/70">new password</label>
                 <Input
                   type="password"
                   value={password}
@@ -264,7 +264,7 @@ export function Settings() {
 
             <form onSubmit={handleEmailSubmit}>
               <div className="space-y-2">
-                <label className="text-sm text-gray-600">email</label>
+                <label className="text-sm text-primary/70">email</label>
                 <Input
                   type="email"
                   value={email}

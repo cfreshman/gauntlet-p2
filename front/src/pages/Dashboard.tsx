@@ -88,14 +88,14 @@ export function Dashboard() {
     }
   }
 
-  if (loading) return <div>loading dashboard...</div>
-  if (error) return <div>{error}</div>
+  if (loading) return <div className="text-primary">loading dashboard...</div>
+  if (error) return <div className="text-red-600">failed to {error}</div>
 
   if (profile?.role === 'manager') {
     return (
       <div className="max-w-5xl mx-auto px-4 py-6">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">dashboard</h1>
+          <h1 className="text-2xl font-bold text-primary">dashboard</h1>
           <div className="flex gap-2">
             <Link to="/tickets/new">
               <Button>new ticket</Button>
@@ -104,46 +104,46 @@ export function Dashboard() {
         </div>
 
         <div className="grid grid-cols-2 gap-6">
-          <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-medium mb-4">ticket status</h2>
+          <div className="bg-background border border-primary shadow rounded-lg p-6">
+            <h2 className="text-lg font-medium text-primary mb-4">ticket status</h2>
             <div className="space-y-2">
-              <Link to="/tickets?status=new&view=tickets" className="flex justify-between px-2 py-1 rounded-md hover:bg-gray-100">
-                <span>new</span>
-                <span className="text-blue-600">{counts.new}</span>
+              <Link to="/tickets?status=new&view=tickets" className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
+                <span className="text-primary">new</span>
+                <span className="text-primary">{counts.new}</span>
               </Link>
-              <Link to="/tickets?status=open&view=tickets" className="flex justify-between px-2 py-1 rounded-md hover:bg-gray-100">
-                <span>open</span>
-                <span className="text-blue-600">{counts.open}</span>
+              <Link to="/tickets?status=open&view=tickets" className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
+                <span className="text-primary">open</span>
+                <span className="text-primary">{counts.open}</span>
               </Link>
-              <Link to="/tickets?status=pending&view=tickets" className="flex justify-between px-2 py-1 rounded-md hover:bg-gray-100">
-                <span>pending</span>
-                <span className="text-blue-600">{counts.pending}</span>
+              <Link to="/tickets?status=pending&view=tickets" className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
+                <span className="text-primary">pending</span>
+                <span className="text-primary">{counts.pending}</span>
               </Link>
-              <Link to="/tickets?status=resolved&view=tickets" className="flex justify-between px-2 py-1 rounded-md hover:bg-gray-100">
-                <span>resolved</span>
-                <span className="text-blue-600">{counts.resolved}</span>
+              <Link to="/tickets?status=resolved&view=tickets" className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
+                <span className="text-primary">resolved</span>
+                <span className="text-primary">{counts.resolved}</span>
               </Link>
-              <Link to="/tickets?status=closed&view=tickets&closed_after=7d" className="flex justify-between px-2 py-1 rounded-md hover:bg-gray-100">
-                <span>recently closed</span>
-                <span className="text-blue-600">{counts.recently_closed}</span>
+              <Link to="/tickets?status=closed&view=tickets&closed_after=7d" className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
+                <span className="text-primary">recently closed</span>
+                <span className="text-primary">{counts.recently_closed}</span>
               </Link>
             </div>
           </div>
 
-          <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-medium mb-4">priorities</h2>
+          <div className="bg-background border border-primary shadow rounded-lg p-6">
+            <h2 className="text-lg font-medium text-primary mb-4">priorities</h2>
             <div className="space-y-2">
-              <Link to="/tickets?priority=urgent&view=tickets" className="flex justify-between px-2 py-1 rounded-md hover:bg-red-50">
-                <span>urgent</span>
-                <span className="text-red-600">{counts.urgent}</span>
+              <Link to="/tickets?priority=urgent&view=tickets" className="flex justify-between px-2 py-1 rounded-md hover:bg-red-500/5">
+                <span className="text-red-500">urgent</span>
+                <span className="text-red-500">{counts.urgent}</span>
               </Link>
-              <Link to="/tickets?priority=high&view=tickets" className="flex justify-between px-2 py-1 rounded-md hover:bg-orange-50">
-                <span>high</span>
-                <span className="text-orange-600">{counts.high}</span>
+              <Link to="/tickets?priority=high&view=tickets" className="flex justify-between px-2 py-1 rounded-md hover:bg-orange-500/5">
+                <span className="text-orange-500">high</span>
+                <span className="text-orange-500">{counts.high}</span>
               </Link>
-              <Link to="/tickets?assigned=null&status=active&view=tickets" className="flex justify-between px-2 py-1 rounded-md hover:bg-gray-100">
-                <span>unassigned</span>
-                <span className="text-blue-600">{counts.unassigned}</span>
+              <Link to="/tickets?assigned=null&status=active&view=tickets" className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
+                <span className="text-primary">unassigned</span>
+                <span className="text-primary">{counts.unassigned}</span>
               </Link>
             </div>
           </div>
@@ -156,7 +156,7 @@ export function Dashboard() {
     return (
       <div className="max-w-5xl mx-auto px-4 py-6">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">dashboard</h1>
+          <h1 className="text-2xl font-bold text-primary">dashboard</h1>
           <div className="flex gap-2">
             <Link to="/tickets/new">
               <Button>new ticket</Button>
@@ -165,34 +165,34 @@ export function Dashboard() {
         </div>
 
         <div className="grid grid-cols-2 gap-6">
-          <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-medium mb-4">my tickets</h2>
+          <div className="bg-background border border-primary shadow rounded-lg p-6">
+            <h2 className="text-lg font-medium text-primary mb-4">my tickets</h2>
             <div className="space-y-2">
-              <Link to={`/tickets?assigned=${profile?.id}`} className="flex justify-between px-2 py-1 rounded-md hover:bg-gray-100">
-                <span>assigned to me</span>
-                <span className="text-blue-600">{counts.assigned}</span>
+              <Link to={`/tickets?assigned=${profile?.id}`} className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
+                <span className="text-primary">assigned to me</span>
+                <span className="text-primary">{counts.assigned}</span>
               </Link>
-              <Link to={`/tickets?priority=urgent&assigned=${profile?.id}`} className="flex justify-between px-2 py-1 rounded-md hover:bg-red-50">
-                <span>urgent</span>
-                <span className="text-red-600">{counts.urgent}</span>
+              <Link to={`/tickets?priority=urgent&assigned=${profile?.id}`} className="flex justify-between px-2 py-1 rounded-md hover:bg-red-500/5">
+                <span className="text-red-500">urgent</span>
+                <span className="text-red-500">{counts.urgent}</span>
               </Link>
-              <Link to={`/tickets?priority=high&assigned=${profile?.id}`} className="flex justify-between px-2 py-1 rounded-md hover:bg-orange-50">
-                <span>high</span>
-                <span className="text-orange-600">{counts.high}</span>
+              <Link to={`/tickets?priority=high&assigned=${profile?.id}`} className="flex justify-between px-2 py-1 rounded-md hover:bg-orange-500/5">
+                <span className="text-orange-500">high</span>
+                <span className="text-orange-500">{counts.high}</span>
               </Link>
             </div>
           </div>
 
-          <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-medium mb-4">available tickets</h2>
+          <div className="bg-background border border-primary shadow rounded-lg p-6">
+            <h2 className="text-lg font-medium text-primary mb-4">available tickets</h2>
             <div className="space-y-2">
-              <Link to="/tickets?assigned=null&status=active" className="flex justify-between px-2 py-1 rounded-md hover:bg-gray-100">
-                <span>unassigned</span>
-                <span className="text-blue-600">{counts.unassigned}</span>
+              <Link to="/tickets?assigned=null&status=active" className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
+                <span className="text-primary">unassigned</span>
+                <span className="text-primary">{counts.unassigned}</span>
               </Link>
-              <Link to="/tickets?status=new&assigned=null" className="flex justify-between px-2 py-1 rounded-md hover:bg-gray-100">
-                <span>new</span>
-                <span className="text-blue-600">{counts.new}</span>
+              <Link to="/tickets?status=new&assigned=null" className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
+                <span className="text-primary">new</span>
+                <span className="text-primary">{counts.new}</span>
               </Link>
             </div>
           </div>
@@ -205,7 +205,7 @@ export function Dashboard() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">my tickets</h1>
+        <h1 className="text-2xl font-bold text-primary">my tickets</h1>
         <div className="flex gap-2">
           <Link to="/tickets/new">
             <Button>new ticket</Button>
@@ -214,32 +214,32 @@ export function Dashboard() {
       </div>
 
       <div className="grid grid-cols-2 gap-6">
-        <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-lg font-medium mb-4">ticket status</h2>
+        <div className="bg-background border border-primary shadow rounded-lg p-6">
+          <h2 className="text-lg font-medium text-primary mb-4">ticket status</h2>
           <div className="space-y-2">
-            <Link to="/tickets?status=active" className="flex justify-between px-2 py-1 rounded-md hover:bg-gray-100">
-              <span>open tickets</span>
-              <span className="text-blue-600">{counts.new + counts.open + counts.pending}</span>
+            <Link to="/tickets?status=active" className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
+              <span className="text-primary">open tickets</span>
+              <span className="text-primary">{counts.new + counts.open + counts.pending}</span>
             </Link>
-            <Link to="/tickets?status=resolved" className="flex justify-between px-2 py-1 rounded-md hover:bg-gray-100">
-              <span>resolved</span>
-              <span className="text-blue-600">{counts.resolved}</span>
+            <Link to="/tickets?status=resolved" className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
+              <span className="text-primary">resolved</span>
+              <span className="text-primary">{counts.resolved}</span>
             </Link>
-            <Link to="/tickets?status=closed&closed_after=7d" className="flex justify-between px-2 py-1 rounded-md hover:bg-gray-100">
-              <span>recently closed</span>
-              <span className="text-blue-600">{counts.recently_closed}</span>
+            <Link to="/tickets?status=closed&closed_after=7d" className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
+              <span className="text-primary">recently closed</span>
+              <span className="text-primary">{counts.recently_closed}</span>
             </Link>
           </div>
         </div>
 
-        <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-lg font-medium mb-4">quick actions</h2>
+        <div className="bg-background border border-primary shadow rounded-lg p-6">
+          <h2 className="text-lg font-medium text-primary mb-4">quick actions</h2>
           <div className="space-y-4">
             <Link to="/tickets/new" className="block">
-              <Button className="w-full">create new ticket</Button>
+              <Button className="w-full">create ticket</Button>
             </Link>
             <Link to="/tickets" className="block">
-              <Button variant="outline" className="w-full">view all tickets</Button>
+              <Button variant="outline" className="w-full">view tickets</Button>
             </Link>
           </div>
         </div>

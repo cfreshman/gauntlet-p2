@@ -24,7 +24,7 @@ export function Header() {
           <nav className="ml-8 space-x-4">
             <Link 
               to={isTicketList ? "/tickets?view=tickets" : "/tickets"}
-              className="text-sm text-gray-600 hover:text-gray-900"
+              className="text-sm text-primary/70 hover:text-primary"
             >
               tickets
             </Link>
@@ -35,11 +35,13 @@ export function Header() {
       {profile ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-7">
-              {profile.username}
-              {(profile.role === 'worker' || profile.role === 'manager') && (
-                <span className="ml-1 text-gray-500">({profile.role})</span>
-              )}
+            <Button variant="ghost" className="h-7 hover:text-background">
+              <div className="flex items-center">
+                <span>{profile.username}</span>
+                {(profile.role === 'worker' || profile.role === 'manager') && (
+                  <span className="ml-1 opacity-70">({profile.role})</span>
+                )}
+              </div>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -53,10 +55,10 @@ export function Header() {
         </DropdownMenu>
       ) : (
         <div className="space-x-4">
-          <Link to="/login" className="text-sm text-gray-600 hover:text-gray-900">
+          <Link to="/login" className="text-sm text-primary/70 hover:text-primary">
             sign in
           </Link>
-          <Link to="/signup" className="text-sm text-gray-600 hover:text-gray-900">
+          <Link to="/signup" className="text-sm text-primary/70 hover:text-primary">
             sign up
           </Link>
         </div>

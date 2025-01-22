@@ -18,6 +18,9 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import { ChevronsUpDown } from 'lucide-react'
 import { Switch } from '../ui/switch'
+import { Link } from 'react-router-dom'
+import { PencilIcon, TrashIcon } from 'lucide-react'
+import { Label } from '../ui/label'
 
 interface Comment {
   id: string
@@ -412,348 +415,358 @@ export function TicketDetail() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
-      <div className="mb-6 flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">
-            {isTemplate ? ticket.title.slice(9) : ticket.title}
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            created by {usernames[ticket.created_by] || 'unknown'}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {profile?.role !== 'customer' && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleShareTemplate}
-              disabled={!isTemplate}
-            >
-              share as template
-            </Button>
-          )}
-          {(profile?.role === 'manager' || ticket.created_by === user?.id) && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleTemplateToggle}
-              disabled={updatingTicket}
-            >
-              {isTemplate ? 'unmark as template' : 'mark as template'}
-            </Button>
-          )}
-        </div>
-      </div>
-      
-      {error && (
-        <div className="mb-4 text-sm text-red-600">{error}</div>
-      )}
-
-      <div className="bg-white shadow rounded-lg p-6 mb-6">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <span className="text-sm text-gray-500">status</span>
-            {canUpdateStatus ? (
-              <select
-                value={ticket.status}
-                onChange={(e) => handleStatusChange(e.target.value as TicketStatus)}
-                disabled={updatingTicket}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-              >
-                <option value="new">new</option>
-                <option value="open">open</option>
-                <option value="pending">pending</option>
-                <option value="resolved">resolved</option>
-                <option value="closed">closed</option>
-              </select>
-            ) : (
-              <p className="font-medium">{ticket.status}</p>
-            )}
-          </div>
-          <div>
-            <span className="text-sm text-gray-500">priority</span>
-            {profile?.role === 'manager' || ticket.created_by === user?.id ? (
-              <select
-                value={ticket.priority}
-                onChange={(e) => handlePriorityChange(e.target.value as TicketPriority)}
-                disabled={updatingTicket}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-              >
-                <option value="low">low</option>
-                <option value="medium">medium</option>
-                <option value="high">high</option>
-                <option value="urgent">urgent</option>
-              </select>
-            ) : (
-              <p className="font-medium">{ticket.priority}</p>
-            )}
-          </div>
-          <div>
-            <span className="text-sm text-gray-500">tags</span>
-            <div className="flex flex-wrap gap-2 mt-1">
-              {ticketTags.map(tag => (
-                <div 
-                  key={tag.id}
-                  className="flex items-center gap-1 px-2 py-1 bg-gray-100 rounded-full text-sm"
+      <div className="space-y-4">
+        <div className="bg-background border border-primary shadow rounded-lg p-4">
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-2xl font-bold text-primary mb-2">
+                {isTemplate ? ticket.title.slice(9) : ticket.title}
+              </h1>
+              <div className="text-sm text-primary/70 flex gap-4">
+                <span>by {usernames[ticket.created_by] || 'unknown'}</span>
+                <span>{new Date(ticket.created_at).toLocaleString()}</span>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              {profile?.role !== 'customer' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleShareTemplate}
+                  disabled={!isTemplate}
                 >
-                  {tag.name}
-                  {isManagerOrWorker && (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        try {
-                          await removeTag(tag.id)
-                        } catch (e) {
-                          console.error('Error removing tag:', e)
-                          setError('failed to remove tag')
-                        }
-                      }}
-                      className="text-gray-500 hover:text-gray-700"
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-              ))}
-              {isManagerOrWorker && (
-                <Popover open={tagSearchOpen} onOpenChange={setTagSearchOpen}>
-                  <PopoverTrigger asChild>
-                    <button className="flex items-center gap-1 px-2 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200">
-                      add tag
-                      <ChevronsUpDown className="h-3 w-3 opacity-50" />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[300px] p-0" align="start">
-                    <Command className="w-full [&_[cmdk-input-wrapper]]:px-0">
-                      <CommandInput 
-                        placeholder="search tags..." 
-                        className="h-9 w-full ring-0 focus:ring-0 focus-visible:ring-0" 
-                        value={tagSearch} 
-                        onValueChange={setTagSearch}
-                        onKeyDown={async (e) => {
-                          if (e.key === 'Enter' && tagSearch) {
-                            e.preventDefault()
-                            if (filteredTags.length === 1) {
-                              const tag = filteredTags[0]
-                              try {
-                                if (tag.id === 'create') {
-                                  const newTag = await createTag(tagSearch.trim())
-                                  if (newTag) {
-                                    await addTag(newTag.id)
-                                  }
-                                } else {
-                                  await addTag(tag.id)
-                                }
-                                setTagSearchOpen(false)
-                                setTagSearch('')
-                              } catch (e) {
-                                console.error('Error with tag:', e)
-                                setError('failed to handle tag')
-                              }
-                            }
-                          }
-                        }}
-                      />
-                      <CommandEmpty className="py-2 px-3 text-sm text-gray-500">no tags found</CommandEmpty>
-                      <CommandGroup className="max-h-[200px] overflow-y-auto">
-                        {filteredTags.map(tag => (
-                          <CommandItem
-                            key={tag.id}
-                            onSelect={async () => {
-                              try {
-                                if (tag.id === 'create') {
-                                  const newTag = await createTag(tagSearch.trim())
-                                  if (newTag) {
-                                    await addTag(newTag.id)
-                                  }
-                                } else {
-                                  await addTag(tag.id)
-                                }
-                                setTagSearchOpen(false)
-                                setTagSearch('')
-                              } catch (e) {
-                                console.error('Error with tag:', e)
-                                setError('failed to handle tag')
-                              }
-                            }}
-                            className={tag.id === 'create' 
-                              ? "py-2 px-3 cursor-pointer hover:bg-accent hover:text-accent-foreground text-blue-600"
-                              : "py-2 px-3 cursor-pointer hover:bg-accent hover:text-accent-foreground"}
-                          >
-                            {tag.id === 'create' ? `create "${tagSearch}"` : tag.name}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
+                  share template
+                </Button>
+              )}
+              {(profile?.role === 'manager' || (profile?.role === 'worker' && ticket.created_by === user?.id)) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleTemplateToggle}
+                  disabled={updatingTicket}
+                >
+                  {isTemplate ? 'remove template' : 'make template'}
+                </Button>
               )}
             </div>
           </div>
-          <div>
-            <span className="text-sm text-gray-500">assignee</span>
-            {profile?.role === 'manager' || (profile?.role === 'worker' && (!ticket.assigned_to || ticket.assigned_to === user?.id)) ? (
-              <select
-                value={ticket.assigned_to || ''}
-                onChange={(e) => handleAssignmentChange(e.target.value || null)}
-                disabled={updatingTicket}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-              >
-                <option value="">unassigned</option>
-                {assignableMembers.map(member => (
-                  <option key={member.id} value={member.id}>
-                    {usernames[member.id] || member.username} ({member.role})
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <p className="font-medium">
-                {ticket.assigned_to ? usernames[ticket.assigned_to] || 'unknown' : 'unassigned'}
-              </p>
-            )}
-          </div>
-        </div>
 
-        {ticket.description && (
-          <div className="mt-6">
-            <span className="text-sm text-gray-500">description</span>
-            <p className="mt-1 whitespace-pre-wrap">{ticket.description}</p>
-          </div>
-        )}
+          {error && (
+            <div className="mt-4 text-sm text-red-600">failed to {error}</div>
+          )}
 
-        {isManager && (
-          <div className="mt-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium">custom fields</h3>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => setAddingField(true)}
-              >
-                add field
-              </Button>
-            </div>
-
-            {addingField && (
-              <div className="mt-2 flex gap-2">
+          <div className="mt-6 grid grid-cols-2 gap-4">
+            <div>
+              <span className="text-sm text-primary/70">status</span>
+              {canUpdateStatus ? (
                 <Select
-                  value={selectedFieldId}
-                  onValueChange={setSelectedFieldId}
+                  value={ticket.status}
+                  onValueChange={(value) => handleStatusChange(value as TicketStatus)}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="select field" />
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {allFields
-                      .filter(f => !fields.find(existing => existing.id === f.id))
-                      .map(field => (
-                        <SelectItem key={field.id} value={field.id}>
-                          {field.name}
-                        </SelectItem>
-                      ))}
+                    <SelectItem value="new">new</SelectItem>
+                    <SelectItem value="open">open</SelectItem>
+                    <SelectItem value="pending">pending</SelectItem>
+                    <SelectItem value="resolved">resolved</SelectItem>
+                    <SelectItem value="closed">closed</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button size="sm" onClick={handleAddField}>add</Button>
-                <Button size="sm" variant="ghost" onClick={() => {
-                  setAddingField(false)
-                  setSelectedFieldId('')
-                }}>
-                  cancel
+              ) : (
+                <p className="mt-1 font-medium text-primary">{ticket.status}</p>
+              )}
+            </div>
+
+            <div>
+              <span className="text-sm text-primary/70">priority</span>
+              {profile?.role === 'manager' || ticket.created_by === user?.id ? (
+                <Select
+                  value={ticket.priority}
+                  onValueChange={(value) => handlePriorityChange(value as TicketPriority)}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">low</SelectItem>
+                    <SelectItem value="medium">medium</SelectItem>
+                    <SelectItem value="high">high</SelectItem>
+                    <SelectItem value="urgent">urgent</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="mt-1 font-medium text-primary">{ticket.priority}</p>
+              )}
+            </div>
+
+            <div>
+              <span className="text-sm text-primary/70">tags</span>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {ticketTags.map(tag => (
+                  <div 
+                    key={tag.id}
+                    className="flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-full text-sm"
+                  >
+                    {tag.name}
+                    {isManagerOrWorker && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await removeTag(tag.id)
+                          } catch (e) {
+                            console.error('Error removing tag:', e)
+                            setError('failed to remove tag')
+                          }
+                        }}
+                        className="text-primary/70 hover:text-primary"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {isManagerOrWorker && (
+                  <Popover open={tagSearchOpen} onOpenChange={setTagSearchOpen}>
+                    <PopoverTrigger asChild>
+                      <button className="flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-full text-sm hover:bg-primary/20">
+                        add tag
+                        <ChevronsUpDown className="h-3 w-3 opacity-50" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[300px] p-0 bg-background border border-primary" align="start">
+                      <Command className="w-full [&_[cmdk-input-wrapper]]:px-0">
+                        <CommandInput 
+                          placeholder="search tags..." 
+                          className="h-9 w-full ring-0 focus:ring-0 focus-visible:ring-0 text-primary placeholder:text-primary/50" 
+                          value={tagSearch} 
+                          onValueChange={setTagSearch}
+                          onKeyDown={async (e) => {
+                            if (e.key === 'Enter' && tagSearch) {
+                              e.preventDefault()
+                              if (filteredTags.length === 1) {
+                                const tag = filteredTags[0]
+                                try {
+                                  if (tag.id === 'create') {
+                                    const newTag = await createTag(tagSearch.trim())
+                                    if (newTag) {
+                                      await addTag(newTag.id)
+                                    }
+                                  } else {
+                                    await addTag(tag.id)
+                                  }
+                                  setTagSearchOpen(false)
+                                  setTagSearch('')
+                                } catch (e) {
+                                  console.error('Error with tag:', e)
+                                  setError('failed to handle tag')
+                                }
+                              }
+                            }
+                          }}
+                        />
+                        <CommandEmpty className="py-2 px-3 text-sm text-primary/50">no tags found</CommandEmpty>
+                        <CommandGroup className="max-h-[200px] overflow-y-auto">
+                          {filteredTags.map(tag => (
+                            <CommandItem
+                              key={tag.id}
+                              onSelect={async () => {
+                                try {
+                                  if (tag.id === 'create') {
+                                    const newTag = await createTag(tagSearch.trim())
+                                    if (newTag) {
+                                      await addTag(newTag.id)
+                                    }
+                                  } else {
+                                    await addTag(tag.id)
+                                  }
+                                  setTagSearchOpen(false)
+                                  setTagSearch('')
+                                } catch (e) {
+                                  console.error('Error with tag:', e)
+                                  setError('failed to handle tag')
+                                }
+                              }}
+                              className={tag.id === 'create' 
+                                ? "py-2 px-3 cursor-pointer hover:bg-primary/10 text-primary"
+                                : "py-2 px-3 cursor-pointer hover:bg-primary/10 text-primary"}
+                            >
+                              {tag.id === 'create' ? `create "${tagSearch}"` : tag.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <span className="text-sm text-primary/70">assignee</span>
+              {profile?.role === 'manager' || (profile?.role === 'worker' && (!ticket.assigned_to || ticket.assigned_to === user?.id)) ? (
+                <Select
+                  value={ticket.assigned_to || 'unassigned'}
+                  onValueChange={(value) => handleAssignmentChange(value === 'unassigned' ? null : value)}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unassigned">unassigned</SelectItem>
+                    {assignableMembers.map(member => (
+                      <SelectItem key={member.id} value={member.id}>
+                        {usernames[member.id] || member.username} ({member.role})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="mt-1 font-medium text-primary">
+                  {ticket.assigned_to ? usernames[ticket.assigned_to] || 'unknown' : 'unassigned'}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {ticket.description && (
+            <div className="mt-6">
+              <span className="text-sm text-primary/70">description</span>
+              <p className="mt-1 text-primary whitespace-pre-wrap">{ticket.description}</p>
+            </div>
+          )}
+
+          {isManager && (
+            <div className="mt-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium text-primary">custom fields</h3>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setAddingField(true)}
+                >
+                  add field
                 </Button>
               </div>
-            )}
-          </div>
-        )}
 
-        {fields.length > 0 && (
-          <div className="mt-4">
-            {fields.map(field => (
-              <div key={field.id} className="flex items-center gap-2">
-                <CustomField
-                  field={field}
-                  value={values[field.id] || ''}
-                  onChange={(value: string) => handleFieldValueChange(field.id, value)}
-                  readOnly={!isManagerOrWorker}
-                />
-                {isManager && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleRemoveField(field.id)}
+              {addingField && (
+                <div className="mt-2 flex gap-2">
+                  <Select
+                    value={selectedFieldId}
+                    onValueChange={setSelectedFieldId}
                   >
-                    remove
+                    <SelectTrigger>
+                      <SelectValue placeholder="select field" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {allFields
+                        .filter(f => !fields.find(existing => existing.id === f.id))
+                        .map(field => (
+                          <SelectItem key={field.id} value={field.id}>
+                            {field.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <Button size="sm" onClick={handleAddField}>add</Button>
+                  <Button size="sm" variant="ghost" onClick={() => {
+                    setAddingField(false)
+                    setSelectedFieldId('')
+                  }}>
+                    cancel
                   </Button>
-                )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {fields.length > 0 && (
+            <div className="mt-4">
+              {fields.map(field => (
+                <div key={field.id} className="flex items-center gap-2">
+                  <CustomField
+                    field={field}
+                    value={values[field.id] || ''}
+                    onChange={(value: string) => handleFieldValueChange(field.id, value)}
+                    readOnly={!isManagerOrWorker}
+                  />
+                  {isManager && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveField(field.id)}
+                    >
+                      remove
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="bg-background border border-primary shadow rounded-lg p-4">
+          <h2 className="text-lg font-semibold text-primary mb-4">comments</h2>
+          <div className="space-y-4">
+            {comments.map(comment => (
+              <div key={comment.id} className="border-b border-primary/20 last:border-0 pb-4">
+                <div className="flex justify-between items-start">
+                  <div className="text-sm text-primary/70">
+                    <span className="font-medium text-primary">{usernames[comment.created_by] || 'unknown'}</span>
+                    <span className="mx-2">·</span>
+                    <span>{new Date(comment.created_at).toLocaleString()}</span>
+                    {comment.internal && (
+                      <>
+                        <span className="mx-2">·</span>
+                        <span className="text-yellow-500">internal</span>
+                      </>
+                    )}
+                  </div>
+                  {(profile?.role === 'manager' || (profile?.role === 'customer' && comment.created_by === user?.id)) && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => handleDeleteComment(comment.id)}
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                <div className="mt-2 text-primary whitespace-pre-wrap">{comment.content}</div>
               </div>
             ))}
           </div>
-        )}
-      </div>
 
-      <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-lg font-medium mb-4">comments</h2>
-        
-        <div className="space-y-4 mb-4">
-          {comments
-            .filter(comment => !comment.internal || isManagerOrWorker)
-            .map(comment => (
-            <div key={comment.id} className="border-b pb-4">
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{usernames[comment.created_by] || 'unknown'}</span>
-                  <span className="text-sm text-gray-500">
-                    {new Date(comment.created_at).toLocaleString()}
-                  </span>
-                  {comment.internal && (
-                    <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">
-                      internal
-                    </span>
-                  )}
-                </div>
-                {(profile?.role === 'manager' || (profile?.role === 'customer' && comment.created_by === user?.id)) && (
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => handleDeleteComment(comment.id)}
-                    disabled={updatingComment}
-                  >
-                    delete
-                  </Button>
-                )}
+          <div className="mt-6 pt-4 border-t border-primary/20">
+            <h3 className="text-sm font-medium text-primary mb-4">add comment</h3>
+            <form onSubmit={handleCommentSubmit} className="space-y-4">
+              <div>
+                <Textarea 
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="write your comment..."
+                  className="w-full"
+                />
               </div>
-              <p className="whitespace-pre-wrap">{comment.content}</p>
-            </div>
-          ))}
+              {isManagerOrWorker && (
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="internal"
+                    checked={isInternal}
+                    onCheckedChange={setIsInternal}
+                  />
+                  <Label htmlFor="internal" className="text-primary">internal comment</Label>
+                </div>
+              )}
+              <Button type="submit" disabled={!newComment.trim()}>
+                add comment
+              </Button>
+            </form>
+          </div>
         </div>
-
-        <form onSubmit={handleCommentSubmit} className="space-y-2">
-          <Textarea
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Add a comment..."
-            rows={3}
-            disabled={updatingComment}
-            className="w-full"
-          />
-          {isManagerOrWorker && (
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={isInternal}
-                onCheckedChange={setIsInternal}
-                disabled={updatingComment}
-              />
-              <span className="text-sm">internal note</span>
-            </div>
-          )}
-          <Button 
-            type="submit" 
-            disabled={updatingComment || !newComment.trim()}
-            className="w-full"
-          >
-            {updatingComment ? 'posting...' : 'post comment'}
-          </Button>
-        </form>
       </div>
     </div>
   )

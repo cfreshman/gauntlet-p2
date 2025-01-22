@@ -4,50 +4,27 @@
  
 @layer base {
   :root {
-    --background: 0 0% 96%;  /* Light gray background */
-    --foreground: 0 0% 0%;
-    --card: 0 0% 100%;  /* Pure white cards */
-    --card-foreground: 0 0% 0%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 0%;
-    --header: 0 0% 100%;  /* White header */
-    --primary: 0 100% 50%;  /* Mondrian Red */
-    --primary-foreground: 0 0% 100%;
-    --secondary: 60 100% 50%;  /* Mondrian Yellow */
-    --secondary-foreground: 0 0% 0%;
-    --muted: 220 13% 91%;
-    --muted-foreground: 0 0% 45%;
-    --accent: 240 100% 50%;  /* Mondrian Blue */
-    --accent-foreground: 0 0% 100%;
+    --background: 0 0% 7%;
+    --foreground: 49 100% 50%;
+    --card: 0 0% 7%;
+    --card-foreground: 49 100% 50%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 49 100% 50%;
+    --header: 0 0% 7%;
+    --primary: 49 100% 50%;
+    --primary-foreground: 0 0% 7%;
+    --secondary: 0 0% 7%;
+    --secondary-foreground: 49 100% 50%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 49 100% 50%;
+    --accent: 49 100% 50%;
+    --accent-foreground: 0 0% 7%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 0%;  /* Mondrian Black */
-    --input: 0 0% 89.8%;
-    --ring: 0 100% 50%;
-    --radius: 0;  /* Mondrian uses sharp edges */
-  }
- 
-  .dark {
-    --background: 0 0% 10%;  /* Dark gray background */
-    --foreground: 0 0% 100%;
-    --card: 0 0% 15%;  /* Slightly lighter dark gray for cards */
-    --card-foreground: 0 0% 100%;
-    --popover: 0 0% 15%;
-    --popover-foreground: 0 0% 100%;
-    --header: 0 0% 15%;  /* Match card color */
-    --primary: 0 100% 50%;  /* Mondrian Red */
-    --primary-foreground: 0 0% 100%;
-    --secondary: 60 100% 50%;  /* Mondrian Yellow */
-    --secondary-foreground: 0 0% 100%;
-    --muted: 0 0% 20%;
-    --muted-foreground: 0 0% 65%;
-    --accent: 240 100% 50%;  /* Mondrian Blue */
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 100%;  /* White borders in dark mode */
-    --input: 0 0% 20%;
-    --ring: 0 100% 50%;
+    --destructive-foreground: 49 100% 50%;
+    --border: 49 100% 50%;
+    --input: 0 0% 7%;
+    --ring: 49 100% 50%;
+    --radius: 0;
   }
 }
  

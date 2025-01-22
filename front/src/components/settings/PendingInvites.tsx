@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/hooks/useAuth'
 import { Button } from '../ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
 
 interface TeamInvite {
   id: string
@@ -144,14 +145,15 @@ export function PendingInvites() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-4">
-        <select 
-          value={inviteRole}
-          onChange={(e) => setInviteRole(e.target.value as 'worker' | 'manager')}
-          className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors"
-        >
-          <option value="worker">worker</option>
-          <option value="manager">manager</option>
-        </select>
+        <Select value={inviteRole} onValueChange={(value: 'worker' | 'manager') => setInviteRole(value)}>
+          <SelectTrigger className="w-[120px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="worker">worker</SelectItem>
+            <SelectItem value="manager">manager</SelectItem>
+          </SelectContent>
+        </Select>
         <Button onClick={createInvite}>
           create invite
         </Button>
@@ -180,7 +182,7 @@ export function PendingInvites() {
           ))}
         </div>
       ) : (
-        <div className="text-sm text-gray-500">no pending invites</div>
+        <div className="text-sm text-primary/70">no pending invites</div>
       )}
     </div>
   )

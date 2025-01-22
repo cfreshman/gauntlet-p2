@@ -128,14 +128,14 @@ export default function TeamMembers() {
           </div>
 
           {workers.length === 0 ? (
-            <p className="text-sm text-gray-500">no workers on your team</p>
+            <p className="text-sm text-primary/70">no workers on your team</p>
           ) : (
             <div className="space-y-2">
               {workers.map(worker => (
                 <div key={worker.id} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-sm">{usernames[worker.id] || worker.username}</span>
-                    <span className="text-xs text-gray-500">({worker.role})</span>
+                    <span className="text-xs text-primary/70">({worker.role})</span>
                   </div>
                   {profile.role === 'manager' && worker.role === 'worker' && (
                     <div className="flex items-center gap-2">

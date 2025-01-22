@@ -13,7 +13,7 @@ interface Props {
 export function CustomField({ field, value, onChange, readOnly = false }: Props) {
   return (
     <div className="w-full">
-      <Label className="text-sm text-gray-500">{field.name}</Label>
+      <Label className="text-sm text-primary/70">{field.name}</Label>
       <div className="mt-1">
         {field.type === 'text' && (
           <Input
