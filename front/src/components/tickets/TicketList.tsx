@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Link, useSearchParams, useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import type { Ticket } from '../../lib/types'
@@ -7,6 +7,10 @@ import { Button } from '../ui/button'
 import { useUsernames } from '../../lib/hooks/useUsernames'
 import { useTeams } from '../../lib/hooks/useTeams'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
+import { useTags } from '../../lib/hooks/useTags'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '../ui/command'
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
+import { ChevronsUpDown } from 'lucide-react'
 
 interface TicketWithProfile extends Ticket {
   assigned_to: string | null
@@ -14,6 +18,12 @@ interface TicketWithProfile extends Ticket {
   team_id: string | null
   feedback: {
     rating: number
+  }[] | null
+  ticket_tag_links: {
+    ticket_tags: {
+      id: string
+      name: string
+    }
   }[] | null
 }
 
@@ -43,12 +53,16 @@ export function TicketList() {
   const { profile, user } = useAuth()
   const { usernames, fetchUsername } = useUsernames()
   const { teams } = useTeams()
+  const { tags } = useTags()
   const [tickets, setTickets] = useState<TicketWithProfile[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [searchParams, setSearchParams] = useSearchParams()
   const [ready, setReady] = useState(false)
   const location = useLocation()
+  const [usedTags, setUsedTags] = useState<{id: string, name: string}[]>([])
+  const [tagSearchOpen, setTagSearchOpen] = useState(false)
+  const [tagSearch, setTagSearch] = useState('')
 
   // Restore filters from storage if URL is empty
   useEffect(() => {
@@ -91,6 +105,7 @@ export function TicketList() {
   const assignedId = searchParams.get('assigned_id')
   const closedAfter = searchParams.get('closed_after') || null
   const teamId = searchParams.get('team_id')
+  const tagFilter = searchParams.get('tag') || 'all'
 
   // Update URL params helper
   const updateParams = (updates: Record<string, string | null>) => {
@@ -147,6 +162,36 @@ export function TicketList() {
     }
   }, [searchParams, ready]) // Only load when ready and params change
 
+  // Add effect to load used tags
+  useEffect(() => {
+    async function loadUsedTags() {
+      const { data } = await supabase
+        .from('ticket_tag_links')
+        .select(`
+          ticket_tags (
+            id,
+            name
+          )
+        `)
+        .order('ticket_tags(name)')
+      
+      // Deduplicate tags
+      const uniqueTags = new Map()
+      data?.forEach(item => {
+        const tag = item.ticket_tags
+        uniqueTags.set(tag.id, tag)
+      })
+      setUsedTags(Array.from(uniqueTags.values()))
+    }
+    loadUsedTags()
+  }, [])
+
+  // Filter tags based on search
+  const filteredTags = useMemo(() => {
+    const searchLower = tagSearch.toLowerCase()
+    return usedTags.filter(t => t.name.toLowerCase().includes(searchLower))
+  }, [usedTags, tagSearch])
+
   async function loadTickets() {
     try {
       setLoading(true)
@@ -158,6 +203,12 @@ export function TicketList() {
           *,
           feedback:ticket_feedback (
             rating
+          ),
+          ticket_tag_links!${tagFilter !== 'all' ? 'inner' : 'left'} (
+            ticket_tags (
+              id,
+              name
+            )
           )
         `)
 
@@ -217,6 +268,12 @@ export function TicketList() {
         }
       }
       // 'any' shows all tickets (no filter)
+
+      // Apply tag filter
+      if (tagFilter !== 'all') {
+        query = query
+          .eq('ticket_tag_links.tag_id', tagFilter)
+      }
 
       // Apply sorting
       if (sortField === 'status') {
@@ -373,6 +430,60 @@ export function TicketList() {
           </div>
 
           <div>
+            <label className="block text-sm text-primary/70 mb-1">tag</label>
+            <Popover open={tagSearchOpen} onOpenChange={setTagSearchOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={tagSearchOpen}
+                  className="w-[120px] justify-between"
+                >
+                  {tagFilter === 'all' 
+                    ? 'all'
+                    : usedTags.find(t => t.id === tagFilter)?.name || 'select...'}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[200px] p-0" align="start">
+                <Command>
+                  <CommandInput 
+                    placeholder="search tags..." 
+                    value={tagSearch}
+                    onValueChange={setTagSearch}
+                  />
+                  <CommandEmpty>no tags found</CommandEmpty>
+                  <CommandGroup className="max-h-[200px] overflow-y-auto">
+                    <CommandItem
+                      value="all"
+                      onSelect={() => {
+                        updateParams({ tag: null })
+                        setTagSearchOpen(false)
+                        setTagSearch('')
+                      }}
+                    >
+                      all
+                    </CommandItem>
+                    {filteredTags.map(tag => (
+                      <CommandItem
+                        key={tag.id}
+                        value={tag.name}
+                        onSelect={() => {
+                          updateParams({ tag: tag.id })
+                          setTagSearchOpen(false)
+                          setTagSearch('')
+                        }}
+                      >
+                        {tag.name}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <div>
             <label className="block text-sm text-primary/70 mb-1">sort by</label>
             <Select 
               value={sortField} 
@@ -508,6 +619,21 @@ export function TicketList() {
                         {ticket.feedback[0].rating} ★
                       </span>
                     )}
+                    {ticket.ticket_tag_links?.slice(0, 3).map(link => (
+                      <Link
+                        key={link.ticket_tags.id}
+                        to={`/tickets?tag=${link.ticket_tags.id}`}
+                        className="px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {link.ticket_tags.name}
+                      </Link>
+                    ))}
+                    {ticket.ticket_tag_links && ticket.ticket_tag_links.length > 3 && (
+                      <span className="text-xs text-primary/70">
+                        +{ticket.ticket_tag_links.length - 3} more
+                      </span>
+                    )}
                   </div>
                 </Link>
               </div>
@@ -515,7 +641,7 @@ export function TicketList() {
           ) : (
             <div className="p-8 text-center text-primary/70">
               no tickets found
-              {(statusFilter !== 'all' || priorityFilter !== 'all' || assignedFilter) && (
+              {(statusFilter !== 'all' || priorityFilter !== 'all' || assignedFilter || tagFilter !== 'all') && (
                 <div className="mt-2">
                   <Button 
                     variant="outline" 
@@ -523,7 +649,8 @@ export function TicketList() {
                       updateParams({
                         status: null,
                         priority: null,
-                        assigned: null
+                        assigned: null,
+                        tag: null
                       })
                     }}
                   >
