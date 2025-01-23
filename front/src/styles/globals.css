@@ -4,27 +4,27 @@
  
 @layer base {
   :root {
-    /* Previous gold theme: 49 100% 50% */
+    /* Previous green theme: 142 70% 45% */
     --background: 0 0% 7%;
-    --foreground: 142 70% 45%;
+    --foreground: 49 100% 50%;
     --card: 0 0% 7%;
-    --card-foreground: 142 70% 45%;
+    --card-foreground: 49 100% 50%;
     --popover: 0 0% 7%;
-    --popover-foreground: 142 70% 45%;
+    --popover-foreground: 49 100% 50%;
     --header: 0 0% 7%;
-    --primary: 142 70% 45%;
+    --primary: 49 100% 50%;
     --primary-foreground: 0 0% 7%;
     --secondary: 0 0% 7%;
-    --secondary-foreground: 142 70% 45%;
+    --secondary-foreground: 49 100% 50%;
     --muted: 0 0% 15%;
-    --muted-foreground: 142 70% 45%;
-    --accent: 142 70% 45%;
+    --muted-foreground: 49 100% 50%;
+    --accent: 49 100% 50%;
     --accent-foreground: 0 0% 7%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 142 70% 45%;
-    --border: 142 70% 45%;
+    --destructive-foreground: 49 100% 50%;
+    --border: 49 100% 50%;
     --input: 0 0% 7%;
-    --ring: 142 70% 45%;
+    --ring: 49 100% 50%;
     --radius: 0;
   }
 }
