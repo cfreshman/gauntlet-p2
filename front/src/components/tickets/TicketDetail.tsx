@@ -708,7 +708,7 @@ export function TicketDetail() {
           </div>
 
           {error && (
-            <div className="mt-4 text-sm text-red-600">failed to {error}</div>
+            <div className="mt-4 text-sm text-red-600">{error}</div>
           )}
 
           <div className="mt-6 grid grid-cols-2 gap-4">
@@ -917,7 +917,7 @@ export function TicketDetail() {
                           .map(field => (
                             <CommandItem
                               key={field.id}
-                              value={field.name}
+                              value={field.id}
                               onSelect={() => handleAddField(field.id)}
                             >
                               <span>{field.name}</span>
