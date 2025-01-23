@@ -19,6 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import { ChevronsUpDown, TrashIcon, Star } from 'lucide-react'
 import { Switch } from '../ui/switch'
 import { Label } from '../ui/label'
+import { FormattedText } from '../ui/formatted-text'
 
 interface Comment {
   id: string
@@ -617,9 +618,7 @@ export function TicketDetail() {
               </div>
             </div>
             {feedback.comment && feedback.comment.trim() && (
-              <div className="text-primary whitespace-pre-wrap mt-4">
-                {feedback.comment}
-              </div>
+              <FormattedText text={feedback.comment} className="text-primary whitespace-pre-wrap mt-4" />
             )}
           </div>
         )}
@@ -890,7 +889,7 @@ export function TicketDetail() {
           {ticket.description && (
             <div className="mt-6">
               <span className="text-sm text-primary/70">description</span>
-              <p className="mt-1 text-primary whitespace-pre-wrap">{ticket.description}</p>
+              <FormattedText text={ticket.description} className="mt-1 text-primary whitespace-pre-wrap" />
             </div>
           )}
 
@@ -991,7 +990,7 @@ export function TicketDetail() {
                     </Button>
                   )}
                 </div>
-                <div className="mt-2 text-primary whitespace-pre-wrap">{comment.content}</div>
+                <FormattedText text={comment.content} className="mt-2 text-primary whitespace-pre-wrap" />
               </div>
             ))}
           </div>

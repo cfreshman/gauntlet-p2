@@ -36,4 +36,51 @@ export function createDebouncer() {
       pendingOperations.clear()
     }
   }
+}
+
+interface LinkPart {
+  type: 'link'
+  url: string
+  display: string
+}
+
+type TextPart = string | LinkPart
+
+export function formatTextWithLinks(text: string): TextPart[] {
+  if (!text) return []
+  
+  // More precise regex that requires valid URL patterns
+  const urlRegex = /\b(https?:\/\/)?(localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|([a-zA-Z0-9-]+\.)*[a-zA-Z0-9-]+\.[a-zA-Z]{2,})(:\d+)?(\/[a-zA-Z0-9-._~:/?#[\]@!$&'()*+,;=]*)?(?=[^a-zA-Z0-9-]|$)/gi
+  
+  // Split text into parts (URLs and non-URLs)
+  const parts: TextPart[] = []
+  let lastIndex = 0
+  
+  // Find all matches first
+  const matches = Array.from(text.matchAll(urlRegex))
+  
+  // Process each match and the text between matches
+  matches.forEach((match) => {
+    const offset = match.index!
+    
+    // Add text before the URL
+    if (offset > lastIndex) {
+      parts.push(text.slice(lastIndex, offset))
+    }
+    
+    // Add the URL as a link object
+    const matchText = match[0]
+    const displayUrl = matchText.replace(/^https?:\/\//, '')
+    const fullUrl = matchText.startsWith('http') ? matchText : `http://${matchText}`
+    parts.push({ type: 'link', url: fullUrl, display: displayUrl })
+    
+    lastIndex = offset + matchText.length
+  })
+  
+  // Add remaining text after last URL
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex))
+  }
+  
+  return parts
 } 
