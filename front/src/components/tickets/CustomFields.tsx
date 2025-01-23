@@ -1,48 +1,34 @@
-import { Input } from '../../components/ui/input'
-import { Switch } from '../../components/ui/switch'
-
-interface CustomField {
-  id: string
-  name: string
-  type: string
-  required: boolean
-}
+import { CustomField, CustomFieldType } from './CustomField'
 
 interface CustomFieldsProps {
-  fields: CustomField[]
+  fields: CustomFieldType[]
   values: Record<string, string>
   onChange: (id: string, value: string) => void
+  readOnly?: boolean
+  errors?: Record<string, string>
+  className?: string
 }
 
-export function CustomFields({ fields, values, onChange }: CustomFieldsProps) {
+export function CustomFields({ 
+  fields, 
+  values, 
+  onChange,
+  readOnly = false,
+  errors = {},
+  className 
+}: CustomFieldsProps) {
   return (
-    <div className="space-y-2">
+    <div className={className}>
       {fields.map(field => (
-        <div key={field.id}>
-          <label className="flex items-center gap-1 text-sm text-primary/70">
-            {field.name}
-            {field.required && <span className="text-primary/70">*</span>}
-          </label>
-          
-          {field.type === 'boolean' ? (
-            <div className="flex items-center h-9 space-x-2">
-              <Switch
-                id={field.id}
-                checked={values[field.id] === 'true'}
-                onCheckedChange={(checked: boolean) => {
-                  onChange(field.id, checked ? 'true' : 'false')
-                }}
-              />
-            </div>
-          ) : (
-            <Input
-              type={field.type === 'number' ? 'number' : 'text'}
-              value={values[field.id] || ''}
-              onChange={e => onChange(field.id, e.target.value)}
-              required={field.required}
-            />
-          )}
-        </div>
+        <CustomField
+          key={field.id}
+          field={field}
+          value={values[field.id] || ''}
+          onChange={value => onChange(field.id, value)}
+          readOnly={readOnly}
+          error={errors[field.id]}
+          className="mb-4 last:mb-0"
+        />
       ))}
     </div>
   )

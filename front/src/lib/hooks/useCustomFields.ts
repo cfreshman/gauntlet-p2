@@ -24,6 +24,7 @@ interface SupabaseFieldValue {
 export function useCustomFields(ticketId?: string) {
   const [fields, setFields] = useState<CustomField[]>([])
   const [values, setValues] = useState<Record<string, string>>({})
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -36,6 +37,7 @@ export function useCustomFields(ticketId?: string) {
   async function loadFields() {
     setLoading(true)
     setError('')
+    setFieldErrors({})
 
     try {
       // Check if this is a template
@@ -102,19 +104,45 @@ export function useCustomFields(ticketId?: string) {
       ...prev,
       [fieldId]: value
     }))
+
+    // Clear error when value changes
+    setFieldErrors(prev => {
+      const next = { ...prev }
+      delete next[fieldId]
+      return next
+    })
   }
 
   function validateFields() {
-    return fields.every(field => {
-      if (!field.required) return true
-      const value = values[field.id]
-      return value !== undefined && value !== ''
+    const errors: Record<string, string> = {}
+    let isValid = true
+
+    fields.forEach(field => {
+      if (field.required) {
+        const value = values[field.id]
+        if (!value || value.trim() === '') {
+          errors[field.id] = 'This field is required'
+          isValid = false
+        }
+      }
+
+      if (field.type === 'number' && values[field.id]) {
+        const num = Number(values[field.id])
+        if (isNaN(num)) {
+          errors[field.id] = 'Must be a valid number'
+          isValid = false
+        }
+      }
     })
+
+    setFieldErrors(errors)
+    return isValid
   }
 
   return {
     fields,
     values,
+    fieldErrors,
     loading,
     error,
     updateValue,

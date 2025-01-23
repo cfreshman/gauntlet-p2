@@ -430,14 +430,14 @@ export function TicketDetail() {
     }
   }
 
-  async function handleAddField() {
-    if (!selectedFieldId) return
+  async function handleAddField(fieldId: string) {
+    if (!fieldId) return
     
     const { error } = await supabase
       .from('ticket_field_values')
       .insert({
         ticket_id: id,
-        field_id: selectedFieldId,
+        field_id: fieldId,
         value: ''
       })
 
@@ -446,8 +446,6 @@ export function TicketDetail() {
       return
     }
 
-    setAddingField(false)
-    setSelectedFieldId('')
     // Reload fields and ticket data
     await Promise.all([
       loadTicket(),
@@ -898,57 +896,58 @@ export function TicketDetail() {
 
           {isManager && (
             <div className="mt-6">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-medium text-primary">custom fields</h3>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => setAddingField(true)}
-                >
-                  add field
-                </Button>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="ghost" size="sm">
+                      add field
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[300px] p-0" align="end">
+                    <Command className="w-full">
+                      <CommandInput 
+                        placeholder="search fields..." 
+                        className="h-9"
+                      />
+                      <CommandEmpty>no fields found</CommandEmpty>
+                      <CommandGroup className="max-h-[200px] overflow-y-auto">
+                        {allFields
+                          .filter(f => !fields.find(existing => existing.id === f.id))
+                          .map(field => (
+                            <CommandItem
+                              key={field.id}
+                              value={field.name}
+                              onSelect={() => handleAddField(field.id)}
+                            >
+                              <span>{field.name}</span>
+                              <span className="ml-2 text-xs text-primary/50">
+                                ({field.type}{field.required ? ", required" : ""})
+                              </span>
+                            </CommandItem>
+                          ))}
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
-
-              {addingField && (
-                <div className="mt-2 flex gap-2">
-                  <Select
-                    value={selectedFieldId}
-                    onValueChange={setSelectedFieldId}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="select field" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {allFields
-                        .filter(f => !fields.find(existing => existing.id === f.id))
-                        .map(field => (
-                          <SelectItem key={field.id} value={field.id}>
-                            {field.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                  <Button size="sm" onClick={handleAddField}>add</Button>
-                  <Button size="sm" variant="ghost" onClick={() => {
-                    setAddingField(false)
-                    setSelectedFieldId('')
-                  }}>
-                    cancel
-                  </Button>
-                </div>
-              )}
             </div>
           )}
 
           {fields.length > 0 && (
-            <div className="mt-4">
+            <div className="mt-4 space-y-4">
               {fields.map(field => (
-                <div key={field.id} className="flex items-center gap-2">
+                <div key={field.id} className="flex items-start gap-2">
                   <CustomField
                     field={field}
                     value={values[field.id] || ''}
                     onChange={(value: string) => handleFieldValueChange(field.id, value)}
-                    readOnly={!isManagerOrWorker}
+                    mode={
+                      profile?.role === 'customer' || 
+                      (profile?.role === 'worker' && ticket.assigned_to !== user?.id) ? 
+                      'view' : 'edit'
+                    }
+                    className="flex-1"
                   />
                   {isManager && (
                     <Button

@@ -8,6 +8,7 @@ import { CustomFields } from './CustomFields'
 import { useCustomFields } from '../../lib/hooks/useCustomFields'
 import { Textarea } from '../ui/textarea'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select'
+import { Label } from '../../components/ui/label'
 
 type TicketPriority = 'low' | 'medium' | 'high' | 'urgent'
 
@@ -31,7 +32,7 @@ export function TicketCreate() {
   const [error, setError] = useState('')
   const [priority, setPriority] = useState<TicketPriority>('medium')
   const { user } = useAuth()
-  const { fields, values, updateValue, validateFields } = useCustomFields(templateId || undefined)
+  const { fields, values, updateValue, validateFields, fieldErrors } = useCustomFields(templateId || undefined)
   const [template, setTemplate] = useState<TemplateData | null>(null)
 
   useEffect(() => {
@@ -186,14 +187,16 @@ export function TicketCreate() {
 
         {fields && fields.length > 0 && (
           <div>
-            <label className="block text-sm mb-1">
-              additional fields
-            </label>
-            <CustomFields
-              fields={fields}
-              values={values}
-              onChange={updateValue}
-            />
+            <Label className="text-sm text-primary/70">additional fields</Label>
+            <div className="mt-2">
+              <CustomFields
+                fields={fields}
+                values={values}
+                onChange={updateValue}
+                errors={fieldErrors}
+                className="space-y-4"
+              />
+            </div>
           </div>
         )}
 
