@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../lib/hooks/useAuth';
+import { useTheme } from '../lib/hooks/useTheme';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
@@ -16,6 +17,7 @@ type Status = {
 
 export function Settings() {
   const { profile, updateUsername, updatePassword, updateEmail } = useAuth();
+  const { primaryColor, setPrimaryColor } = useTheme();
   const [username, setUsername] = useState(profile?.username ?? '');
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState(profile?.email ?? '');
@@ -27,6 +29,55 @@ export function Settings() {
   const [teamStatus, setTeamStatus] = useState<Status>({ type: null, message: '' });
   const [hasTeam, setHasTeam] = useState(false);
   const [teamId, setTeamId] = useState<string | null>(null);
+
+  // Convert HSL to hex for color input
+  const [currentColor, setCurrentColor] = useState(primaryColor);
+  const [hue, saturation, lightness] = currentColor.split(' ').map(val => val.replace('%', ''));
+
+  // Update local state when primaryColor changes
+  useEffect(() => {
+    setCurrentColor(primaryColor);
+  }, [primaryColor]);
+
+  const hslToHex = (h: number, s: number, l: number) => {
+    l /= 100;
+    const a = s * Math.min(l, 1 - l) / 100;
+    const f = (n: number) => {
+      const k = (n + h / 30) % 12;
+      const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+      return Math.round(255 * color).toString(16).padStart(2, '0');
+    };
+    return `#${f(0)}${f(8)}${f(4)}`;
+  };
+
+  // Convert hex to HSL for theme
+  const hexToHsl = (hex: string) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    if (!result) return null;
+    
+    let r = parseInt(result[1], 16) / 255;
+    let g = parseInt(result[2], 16) / 255;
+    let b = parseInt(result[3], 16) / 255;
+    
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    let h = 0, s, l = (max + min) / 2;
+
+    if (max === min) {
+      h = s = 0;
+    } else {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+        case g: h = (b - r) / d + 2; break;
+        case b: h = (r - g) / d + 4; break;
+      }
+      h /= 6;
+    }
+
+    return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+  };
 
   // Fetch users and invites if current user is a manager
   useEffect(() => {
@@ -178,6 +229,7 @@ export function Settings() {
       <h1 className="text-2xl font-bold mb-6">settings</h1>
       
       <div className="space-y-6">
+        {/* Team management section */}
         {profile?.role === 'manager' && (
           <>
             {!hasTeam && (
@@ -209,10 +261,12 @@ export function Settings() {
           </>
         )}
 
+        {/* Team members section */}
         {(profile?.role === 'manager' || profile?.role === 'worker') && (
           <TeamMembers />
         )}
 
+        {/* Skills section */}
         {(profile?.role === 'manager' || profile?.role === 'worker') && (
           <Card>
             <CardContent className="pt-4">
@@ -221,6 +275,7 @@ export function Settings() {
           </Card>
         )}
 
+        {/* Field manager section */}
         {profile?.role === 'manager' && hasTeam && (
           <Card>
             <CardContent className="pt-4">
@@ -229,8 +284,31 @@ export function Settings() {
           </Card>
         )}
 
+        {/* User settings section */}
         <Card>
           <CardContent className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <label className="text-sm text-primary/70">theme color</label>
+              <div className="flex gap-2">
+                <Input
+                  type="color"
+                  value={hslToHex(Number(hue), Number(saturation), Number(lightness))}
+                  onChange={(e) => {
+                    const hsl = hexToHsl(e.target.value);
+                    if (hsl) setPrimaryColor(hsl);
+                  }}
+                  className="w-12 h-9 p-1"
+                />
+                <Button
+                  variant="outline"
+                  onClick={() => setPrimaryColor('49 100% 50%')}
+                  size="sm"
+                >
+                  reset
+                </Button>
+              </div>
+            </div>
+
             <form onSubmit={handleSubmit}>
               <div className="space-y-2">
                 <label className="text-sm text-primary/70">username</label>
@@ -293,6 +371,7 @@ export function Settings() {
           </CardContent>
         </Card>
 
+        {/* Unclaimed workers section */}
         {profile?.role === 'manager' && hasTeam && (
           <UnclaimedWorkers />
         )}
