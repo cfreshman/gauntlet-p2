@@ -1,4 +1,4 @@
-# AutoCRM Project Map
+# auto-crm Project Map
 
 ## Week 1 Progress (Due Jan 24)
 

@@ -49,7 +49,7 @@ serve(async (req) => {
     // Get current ticket to check permissions
     const { data: currentTicket, error: ticketError } = await supabase
       .from('tickets')
-      .select('created_by, assigned_to, team_id')
+      .select('created_by, assigned_to, team_id, title')
       .eq('id', id)
       .single()
 
@@ -122,6 +122,18 @@ serve(async (req) => {
       .single()
 
     if (updateError) throw updateError
+
+    // Create notification if someone else assigned the ticket
+    if (assigned_to && assigned_to !== user.id) {
+      await supabase
+        .from('notifications')
+        .insert({
+          user_id: assigned_to,
+          type: 'ticket_assigned',
+          title: `ticket "${currentTicket.title}" assigned to you`,
+          link: `/tickets/${id}`
+        })
+    }
 
     // Only managers can update these related items
     if (profile.role === 'manager') {

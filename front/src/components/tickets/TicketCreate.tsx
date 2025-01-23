@@ -56,7 +56,7 @@ export function TicketCreate() {
       if (data) {
         // Remove template: prefix from title when using as template
         setTemplate({
-          title: data.title.slice(9),
+          title: data.title.slice(9).trim(),
           description: data.description || '',
           priority: data.priority || 'medium',
           ticket_tag_links: data.ticket_tag_links

@@ -43,6 +43,26 @@ export function Dashboard() {
   useEffect(() => {
     if (!profileLoading && profile) {
       loadCounts()
+
+      // Subscribe to ticket changes
+      const channel = supabase
+        .channel('dashboard_tickets')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'tickets',
+          },
+          () => {
+            loadCounts()
+          }
+        )
+        .subscribe()
+
+      return () => {
+        channel.unsubscribe()
+      }
     }
   }, [profile, profileLoading])
 

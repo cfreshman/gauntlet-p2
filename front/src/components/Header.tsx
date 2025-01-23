@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../lib/hooks/useAuth';
 import {
   DropdownMenu,
@@ -7,78 +7,90 @@ import {
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 import { Button } from './ui/button';
+import { NotificationBell } from './NotificationBell'
 
 export function Header() {
   const { profile, signOut } = useAuth();
-  const location = useLocation();
-  const isTicketList = location.pathname === '/tickets';
 
   return (
-    <header className="bg-header border-b h-12 flex items-center px-4">
-      <div className="flex-1 flex items-center">
-        <Link to="/" className="text-lg font-semibold">
-          auto-crm
-        </Link>
-        
-        {profile && (
-          <nav className="ml-8 space-x-4">
-            <Link 
-              to={isTicketList ? "/tickets?view=tickets" : "/tickets"}
-              className="text-sm text-primary/70 hover:text-primary"
-            >
-              tickets
+    <header className="h-12 bg-header border-b border-primary/20">
+      <div className="max-w-5xl mx-auto px-4 h-full flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Link to="/" className="text-sm font-medium">
+            auto-crm
+          </Link>
+          
+          {profile && (
+            <>
+              <Link 
+                to="/tickets" 
+                className="text-sm text-primary/70 hover:text-primary"
+              >
+                tickets
+              </Link>
+              {(profile.role === 'worker' || profile.role === 'manager') && (
+                <>
+                  <Link 
+                    to="/kb" 
+                    className="text-sm text-primary/70 hover:text-primary"
+                  >
+                    knowledge base
+                  </Link>
+                  <Link 
+                    to="/help" 
+                    className="text-sm text-primary/70 hover:text-primary"
+                  >
+                    help center
+                  </Link>
+                </>
+              )}
+              {profile.role === 'customer' && (
+                <Link 
+                  to="/help" 
+                  className="text-sm text-primary/70 hover:text-primary"
+                >
+                  help center
+                </Link>
+              )}
+            </>
+          )}
+        </div>
+
+        {profile ? (
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-7 hover:text-background">
+                  <div className="flex items-center">
+                    <span>{profile.username}</span>
+                    {(profile.role === 'worker' || profile.role === 'manager') && (
+                      <span className="ml-1 opacity-70">({profile.role})</span>
+                    )}
+                  </div>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <Link to="/settings">settings</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => signOut()}>
+                  sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        ) : (
+          <div className="space-x-4">
+            <Link to="/login" className="text-sm text-primary/70 hover:text-primary">
+              sign in
             </Link>
-            {(profile.role === 'worker' || profile.role === 'manager') && (
-              <Link 
-                to="/kb"
-                className="text-sm text-primary/70 hover:text-primary"
-              >
-                knowledge
-              </Link>
-            )}
-            {profile.role === 'customer' && (
-              <Link 
-                to="/help"
-                className="text-sm text-primary/70 hover:text-primary"
-              >
-                help center
-              </Link>
-            )}
-          </nav>
+            <Link to="/signup" className="text-sm text-primary/70 hover:text-primary">
+              sign up
+            </Link>
+          </div>
         )}
       </div>
-
-      {profile ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-7 hover:text-background">
-              <div className="flex items-center">
-                <span>{profile.username}</span>
-                {(profile.role === 'worker' || profile.role === 'manager') && (
-                  <span className="ml-1 opacity-70">({profile.role})</span>
-                )}
-              </div>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem asChild>
-              <Link to="/settings">settings</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => signOut()}>
-              sign out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : (
-        <div className="space-x-4">
-          <Link to="/login" className="text-sm text-primary/70 hover:text-primary">
-            sign in
-          </Link>
-          <Link to="/signup" className="text-sm text-primary/70 hover:text-primary">
-            sign up
-          </Link>
-        </div>
-      )}
     </header>
   );
 } 

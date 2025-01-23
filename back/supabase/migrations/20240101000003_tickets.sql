@@ -713,7 +713,9 @@ alter publication supabase_realtime
   ticket_required_skills,
   kb_articles,
   kb_article_tags,
-  ticket_feedback;
+  ticket_feedback,
+  ticket_field_definitions,
+  team_field_definitions;
 
 -- Add missing RLS enablement
 alter table ticket_feedback enable row level security;
