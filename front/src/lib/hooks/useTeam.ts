@@ -2,24 +2,30 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabase'
 import { useUsernames } from './useUsernames'
 
-interface TeamMember {
+export interface TeamMember {
   id: string
   username: string
   role: 'worker' | 'manager'
 }
 
-export function useTeammates(userId?: string) {
+export interface Team {
+  id: string
+  name: string
+}
+
+export function useTeam(userId?: string) {
   const { fetchUsername } = useUsernames()
-  const [teammates, setTeammates] = useState<TeamMember[]>([])
+  const [members, setMembers] = useState<TeamMember[]>([])
+  const [team, setTeam] = useState<Team | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (userId) {
-      loadTeammates()
+      loadTeamData()
 
       const channel = supabase
-        .channel('teammates')
+        .channel('team-changes')
         .on(
           'postgres_changes',
           {
@@ -28,7 +34,7 @@ export function useTeammates(userId?: string) {
             table: 'team_members'
           },
           () => {
-            loadTeammates()
+            loadTeamData()
           }
         )
         .subscribe()
@@ -39,14 +45,14 @@ export function useTeammates(userId?: string) {
     }
   }, [userId])
 
-  // Load usernames when teammates change
+  // Load usernames when members change
   useEffect(() => {
-    teammates.forEach(member => {
+    members.forEach(member => {
       fetchUsername(member.id)
     })
-  }, [teammates])
+  }, [members])
 
-  async function loadTeammates() {
+  async function loadTeamData() {
     if (!userId) return
 
     try {
@@ -64,12 +70,28 @@ export function useTeammates(userId?: string) {
       }
 
       if (!tm) {
-        setTeammates([])
+        setMembers([])
+        setTeam(null)
         setLoading(false)
         return
       }
 
-      // Get team members first
+      // Get team details
+      const { data: teamData, error: teamDetailsError } = await supabase
+        .from('teams')
+        .select('id, name')
+        .eq('id', tm.team_id)
+        .single()
+
+      if (teamDetailsError) {
+        console.error('Error loading team details:', teamDetailsError)
+        setError('failed to load team details')
+        return
+      }
+
+      setTeam(teamData)
+
+      // Get team members
       const { data: teamMemberships, error: membershipError } = await supabase
         .from('team_members')
         .select('user_id')
@@ -82,7 +104,7 @@ export function useTeammates(userId?: string) {
       }
 
       if (!teamMemberships.length) {
-        setTeammates([])
+        setMembers([])
         setLoading(false)
         return
       }
@@ -101,38 +123,21 @@ export function useTeammates(userId?: string) {
         return
       }
 
-      setTeammates(profiles)
+      setMembers(profiles)
       setLoading(false)
       setError(null)
     } catch (error) {
       console.error('Error:', error)
-      setError('failed to load team members')
+      setError('failed to load team data')
       setLoading(false)
     }
   }
 
-  function getAssignableMembers(userRole: string) {
-    if (userRole === 'manager') {
-      // Managers can assign to themselves or any worker
-      return [
-        ...teammates.filter(member => member.id === userId), // Self
-        ...teammates.filter(member => member.role === 'worker')
-      ]
-    } else if (userRole === 'worker') {
-      // Workers can assign to themselves or their manager
-      const manager = teammates.find(member => member.role === 'manager')
-      return [
-        ...teammates.filter(member => member.id === userId), // Self
-        ...(manager ? [manager] : []) // Manager if exists
-      ]
-    }
-    return []
-  }
-
   return {
-    teammates,
+    members,
+    team,
     loading,
     error,
-    getAssignableMembers
+    loadTeamData
   }
 } 

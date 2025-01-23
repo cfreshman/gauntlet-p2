@@ -5,7 +5,7 @@ import type { Ticket, TicketStatus, TicketPriority } from '../../lib/types'
 import { useAuth } from '../../lib/hooks/useAuth'
 import { Button } from '../ui/button'
 import { useUsernames } from '../../lib/hooks/useUsernames'
-import { useTeammates } from '../../lib/hooks/useTeammates'
+import { useTeamAssignment } from '../../lib/hooks/useTeamAssignment'
 import { useCustomFields } from '../../lib/hooks/useCustomFields'
 import { useFieldDefinitions } from '../../lib/hooks/useFieldDefinitions'
 import { CustomField } from './CustomField'
@@ -58,7 +58,7 @@ export function TicketDetail() {
   const [error, setError] = useState('')
   const [updatingTicket, setUpdatingTicket] = useState(false)
   const [updatingComment, setUpdatingComment] = useState(false)
-  const { getAssignableMembers } = useTeammates(profile?.id)
+  const { getAssignableMembers } = useTeamAssignment(profile?.id)
   const { fields, values, updateValue, loadFields } = useCustomFields(id)
   const { fields: allFields } = useFieldDefinitions()
   const [addingField, setAddingField] = useState(false)

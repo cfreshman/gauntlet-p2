@@ -5,25 +5,25 @@ import { Input } from '../ui/input'
 import { Card, CardContent } from '../ui/card'
 import { useUsernames } from '../../lib/hooks/useUsernames'
 import { PendingInvites } from './PendingInvites'
-import { useTeamMembers } from '../../lib/hooks/useTeamMembers'
+import { useTeamManagement } from '../../lib/hooks/useTeamManagement'
 import { supabase } from '../../lib/supabase'
 
 export default function TeamMembers() {
   const { profile } = useAuth()
   const { usernames } = useUsernames()
-  const { workers, teamMember, loading, error, unassignWorker } = useTeamMembers(profile?.id)
+  const { members, team, loading, error, unassignWorker } = useTeamManagement(profile?.id)
   const [editingName, setEditingName] = useState(false)
   const [newTeamName, setNewTeamName] = useState('')
   const [roleLoading, setRoleLoading] = useState<string | null>(null)
 
   async function renameTeam() {
-    if (!teamMember?.team_id || !newTeamName) return
+    if (!team?.id || !newTeamName) return
 
     try {
       const { error } = await supabase
         .from('teams')
         .update({ name: newTeamName })
-        .eq('id', teamMember.team_id)
+        .eq('id', team.id)
 
       if (error) throw error
 
@@ -71,7 +71,9 @@ export default function TeamMembers() {
       loading workers...
     </div>
   )
-  if (!teamMember) return profile.role === 'manager' ? <div>create a team to manage workers</div> : null
+  if (!team) return profile.role === 'manager' ? <div>create a team to manage workers</div> : null
+
+  const workers = members.filter(m => m.role === 'worker')
 
   return (
     <Card>
@@ -88,7 +90,7 @@ export default function TeamMembers() {
                   type="text"
                   value={newTeamName}
                   onChange={(e) => setNewTeamName(e.target.value)}
-                  placeholder={teamMember?.name}
+                  placeholder={team?.name}
                   className="w-48"
                 />
                 <Button
@@ -113,7 +115,7 @@ export default function TeamMembers() {
             ) : (
               <div className="flex items-center gap-2">
                 <h3 className="text-lg font-medium">
-                  {teamMember?.name || 'team members'}
+                  {team?.name || 'team members'}
                 </h3>
                 {profile.role === 'manager' && (
                   <Button
@@ -121,7 +123,7 @@ export default function TeamMembers() {
                     size="sm"
                     onClick={() => {
                       setEditingName(true)
-                      setNewTeamName(teamMember?.name || '')
+                      setNewTeamName(team?.name || '')
                     }}
                   >
                     rename
