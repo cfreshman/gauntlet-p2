@@ -7,6 +7,7 @@ import { Card, CardContent } from '../components/ui/card';
 import { supabase } from '../lib/supabase';
 import TeamMembers from '../components/settings/TeamMembers';
 import { UnclaimedWorkers } from '../components/settings/UnclaimedWorkers';
+import { UnclaimedManagers } from '../components/settings/UnclaimedManagers';
 import { FieldManager } from '../components/settings/FieldManager';
 import { SkillManager } from '../components/settings/SkillManager'
 
@@ -91,6 +92,33 @@ export function Settings() {
       setUsername(profile.username);
     }
   }, [profile?.username]);
+
+  // Subscribe to team membership changes
+  useEffect(() => {
+    if (profile?.role === 'manager') {
+      checkForTeam();
+
+      const channel = supabase
+        .channel('team-membership')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'team_members',
+            filter: `user_id=eq.${profile.id}`
+          },
+          () => {
+            checkForTeam();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        channel.unsubscribe();
+      };
+    }
+  }, [profile]);
 
   async function checkForTeam() {
     try {
@@ -373,7 +401,10 @@ export function Settings() {
 
         {/* Unclaimed workers section */}
         {profile?.role === 'manager' && hasTeam && (
-          <UnclaimedWorkers />
+          <>
+            <UnclaimedWorkers />
+            <UnclaimedManagers />
+          </>
         )}
       </div>
     </div>
