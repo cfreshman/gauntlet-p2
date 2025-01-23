@@ -23,6 +23,11 @@
   - Edge Functions
   - Team-based access control
 
+- Skills System
+  - Worker skill management
+  - Team-based skill creation
+  - Real-time skill updates
+
 ### 🔲 Remaining Week 1 Tasks
 - Project Deliverables (demo video, documentation, X post)
 
@@ -33,7 +38,7 @@
    - LLM response generation
    - Response suggestions for agents
    - RAG knowledge system
-   - Auto ticket routing/prioritization
+   - Auto ticket routing/prioritization with skills
 
 2. Human Oversight
    - Review queues
@@ -59,7 +64,6 @@ Features from project doc that won't be implemented in Weeks 1-2:
 ### Advanced Features
 - Rich text editing
 - Custom fields
-- Skills-based routing
 - Coverage schedules
 - Load balancing
 - Webhooks/API auth
