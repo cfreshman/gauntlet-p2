@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 
-interface Tag {
+export interface Tag {
   id: string
   name: string
 }

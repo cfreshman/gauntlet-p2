@@ -7,7 +7,7 @@ import { Button } from '../ui/button'
 import { useUsernames } from '../../lib/hooks/useUsernames'
 import { useTeams } from '../../lib/hooks/useTeams'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
-import { useTags } from '../../lib/hooks/useTags'
+import type { Tag } from '../../lib/hooks/useTags'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '../ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import { ChevronsUpDown } from 'lucide-react'
@@ -20,10 +20,7 @@ interface TicketWithProfile extends Ticket {
     rating: number
   }[] | null
   ticket_tag_links: {
-    ticket_tags: {
-      id: string
-      name: string
-    }
+    ticket_tags: Tag
   }[] | null
 }
 
@@ -53,14 +50,13 @@ export function TicketList() {
   const { profile, user } = useAuth()
   const { usernames, fetchUsername } = useUsernames()
   const { teams } = useTeams()
-  const { tags } = useTags()
   const [tickets, setTickets] = useState<TicketWithProfile[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [searchParams, setSearchParams] = useSearchParams()
   const [ready, setReady] = useState(false)
   const location = useLocation()
-  const [usedTags, setUsedTags] = useState<{id: string, name: string}[]>([])
+  const [usedTags, setUsedTags] = useState<Tag[]>([])
   const [tagSearchOpen, setTagSearchOpen] = useState(false)
   const [tagSearch, setTagSearch] = useState('')
 
@@ -162,7 +158,13 @@ export function TicketList() {
     }
   }, [searchParams, ready]) // Only load when ready and params change
 
-  // Add effect to load used tags
+  // Filter tags based on search
+  const filteredTags = useMemo(() => {
+    const searchLower = tagSearch.toLowerCase()
+    return usedTags.filter(t => t.name.toLowerCase().includes(searchLower))
+  }, [usedTags, tagSearch])
+
+  // Update tag filtering
   useEffect(() => {
     async function loadUsedTags() {
       const { data } = await supabase
@@ -174,23 +176,24 @@ export function TicketList() {
           )
         `)
         .order('ticket_tags(name)')
+        .returns<{ ticket_tags: { id: string; name: string } | null }[]>()
       
       // Deduplicate tags
-      const uniqueTags = new Map()
-      data?.forEach(item => {
-        const tag = item.ticket_tags
-        uniqueTags.set(tag.id, tag)
-      })
+      const uniqueTags = new Map<string, Tag>()
+      if (data) {
+        data.forEach(item => {
+          if (item.ticket_tags) {
+            uniqueTags.set(item.ticket_tags.id, {
+              id: item.ticket_tags.id,
+              name: item.ticket_tags.name
+            })
+          }
+        })
+      }
       setUsedTags(Array.from(uniqueTags.values()))
     }
     loadUsedTags()
   }, [])
-
-  // Filter tags based on search
-  const filteredTags = useMemo(() => {
-    const searchLower = tagSearch.toLowerCase()
-    return usedTags.filter(t => t.name.toLowerCase().includes(searchLower))
-  }, [usedTags, tagSearch])
 
   async function loadTickets() {
     try {

@@ -25,7 +25,7 @@ export function CustomFields({
           field={field}
           value={values[field.id] || ''}
           onChange={value => onChange(field.id, value)}
-          readOnly={readOnly}
+          mode={readOnly ? 'view' : 'edit'}
           error={errors[field.id]}
           className="mb-4 last:mb-0"
         />
