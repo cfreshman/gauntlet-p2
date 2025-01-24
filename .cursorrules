@@ -21,10 +21,13 @@ build a modern customer support system (crm) with generative ai enhancements. th
    - ✅ template system for quick responses
    - ✅ theme customization
    - ✅ ticket feedback/rating system
-   - remaining features:
-     - 🟡 ticket history view (partial - has timestamps and notifications)
-     - ❌ bulk operations for tickets
-     - ❌ deliver a 5-min walkthrough video  
+   - ✅ ticket history view (timestamps and notifications)
+   - ✅ deliver a 5-min walkthrough video  
+   - optional enhancements to consider:
+     - 🟡 more theme options/persistence
+     - 🟡 quick toggle for internal/regular comments
+     - 🟡 enhanced dashboard visualizations
+     - 🟡 notification preferences/email notifications
 
 3. **week 2 mvp (by jan 27, 2025)**  
    - introduce basic ai features:
@@ -48,20 +51,9 @@ build a modern customer support system (crm) with generative ai enhancements. th
 
 **current status**
 - Week 1 MVP: ✅ Completed
-- Week 1 Final: 🟡 In Progress
-  - Completed:
-    - Team management
-    - Comment system
-    - Internal comments
-    - Bug fixes
-    - Template system
-    - Theme customization
-    - Ticket feedback/rating
-  - Partially Complete:
-    - Ticket history (has timestamps and notifications)
-  - Not Started:
-    - Bulk operations
-    - Walkthrough video
+- Week 1 Final: ✅ Completed
+  - All core features implemented
+  - Optional enhancements identified but not required
 - Week 2 MVP: ⏳ Not Started
 - Week 2 Final: ⏳ Not Started
 

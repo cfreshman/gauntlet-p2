@@ -39,7 +39,7 @@ export function createDebouncer() {
 }
 
 interface LinkPart {
-  type: 'link'
+  type: 'link' | 'internal-link'
   url: string
   display: string
 }
@@ -72,7 +72,23 @@ export function formatTextWithLinks(text: string): TextPart[] {
     const matchText = match[0]
     const displayUrl = matchText.replace(/^https?:\/\//, '')
     const fullUrl = matchText.startsWith('http') ? matchText : `http://${matchText}`
-    parts.push({ type: 'link', url: fullUrl, display: displayUrl })
+
+    // Check if this is an internal link
+    try {
+      const url = new URL(fullUrl)
+      const isInternalLink = (
+        url.pathname.startsWith('/tickets/') ||
+        url.pathname.startsWith('/help/') ||
+        url.pathname.startsWith('/kb/')
+      )
+      parts.push({ 
+        type: isInternalLink ? 'internal-link' : 'link', 
+        url: fullUrl, 
+        display: displayUrl 
+      })
+    } catch {
+      parts.push({ type: 'link', url: fullUrl, display: displayUrl })
+    }
     
     lastIndex = offset + matchText.length
   })

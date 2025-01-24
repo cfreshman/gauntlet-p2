@@ -1,4 +1,5 @@
 import { formatTextWithLinks } from '../../lib/utils'
+import { LinkPreview } from './link-preview'
 
 interface FormattedTextProps {
   text: string
@@ -6,7 +7,7 @@ interface FormattedTextProps {
 }
 
 interface LinkPart {
-  type: 'link'
+  type: 'link' | 'internal-link'
   url: string
   display: string
 }
@@ -22,6 +23,16 @@ export function FormattedText({ text, className = '' }: FormattedTextProps) {
         if (typeof part === 'string') {
           return part
         }
+
+        if (part.type === 'internal-link') {
+          return (
+            <LinkPreview
+              key={i}
+              url={part.url}
+            />
+          )
+        }
+
         return (
           <a
             key={i}

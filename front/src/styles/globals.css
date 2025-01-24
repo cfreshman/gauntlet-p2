@@ -6,25 +6,25 @@
   :root {
     /* Previous green theme: 142 70% 45% */
     --background: 0 0% 7%;
-    --foreground: 49 100% 50%;
+    --foreground: var(--primary);
     --card: 0 0% 7%;
-    --card-foreground: 49 100% 50%;
+    --card-foreground: var(--primary);
     --popover: 0 0% 7%;
-    --popover-foreground: 49 100% 50%;
+    --popover-foreground: var(--primary);
     --header: 0 0% 7%;
     --primary: 49 100% 50%;
     --primary-foreground: 0 0% 7%;
     --secondary: 0 0% 7%;
-    --secondary-foreground: 49 100% 50%;
+    --secondary-foreground: var(--primary);
     --muted: 0 0% 15%;
-    --muted-foreground: 49 100% 50%;
-    --accent: 49 100% 50%;
+    --muted-foreground: var(--primary);
+    --accent: var(--primary);
     --accent-foreground: 0 0% 7%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 49 100% 50%;
-    --border: 49 100% 50%;
+    --destructive-foreground: var(--primary);
+    --border: var(--primary);
     --input: 0 0% 7%;
-    --ring: 49 100% 50%;
+    --ring: var(--primary);
     --radius: 0;
   }
 }

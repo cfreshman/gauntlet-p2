@@ -9,14 +9,9 @@ const ThemeContext = createContext<{
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [primaryColor, setPrimaryColor] = useState('49 100% 50%');
-
-  useEffect(() => {
-    const savedColor = localStorage.getItem('theme-color');
-    if (savedColor) {
-      setPrimaryColor(savedColor);
-    }
-  }, []);
+  const [primaryColor, setPrimaryColor] = useState(
+    localStorage.getItem('theme-color') || '49 100% 50%'
+  );
 
   useEffect(() => {
     document.documentElement.style.setProperty('--primary', primaryColor);
