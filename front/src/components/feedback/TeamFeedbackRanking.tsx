@@ -11,7 +11,7 @@ export function TeamFeedbackRanking({ members }: TeamFeedbackRankingProps) {
       {members.map(member => (
         <Link 
           key={member.user_id} 
-          to={`/tickets?assigned_id=${member.user_id}&status=closed`}
+          to={`/tickets?assigned_id=${member.user_id}&status=completed`}
           className="flex flex-col px-2 py-1.5 rounded-sm hover:bg-primary/5"
         >
           <div className="text-sm text-primary">{member.user_name}</div>

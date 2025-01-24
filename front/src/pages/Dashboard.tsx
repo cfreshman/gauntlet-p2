@@ -94,7 +94,7 @@ export function Dashboard() {
 
       // Only check team membership for workers
       let teamData = null
-      if (profile.role === 'worker') {
+      if (profile.role === 'worker' || profile.role === 'manager') {
         const { data, error: teamError } = await supabase
           .from('team_members')
           .select('team_id')
@@ -105,7 +105,7 @@ export function Dashboard() {
         teamData = data
 
         // Workers need a team
-        if (!teamData) {
+        if (!teamData && profile.role === 'worker') {
           setError('no team assigned')
           return
         }
@@ -128,10 +128,10 @@ export function Dashboard() {
           // For customers, show their own tickets
           relevantTickets = data.filter(t => t.created_by === profile.id)
           activeTickets = relevantTickets.filter(t => t.status !== 'closed')
-          const unresolvedTickets = relevantTickets.filter(t => t.status !== 'resolved' && t.status !== 'closed')
+          const incompleteTickets = relevantTickets.filter(t => t.status !== 'resolved' && t.status !== 'closed')
 
           setCounts({
-            total: unresolvedTickets.length,
+            total: incompleteTickets.length,
             new: activeTickets.filter(t => t.status === 'new').length,
             new_assigned: 0,
             open: activeTickets.filter(t => t.status === 'open').length,
@@ -367,8 +367,8 @@ export function Dashboard() {
         <div className="bg-background border border-primary shadow rounded-lg p-6">
           <h2 className="text-lg font-medium text-primary mb-4">ticket status</h2>
           <div className="space-y-2">
-            <Link to="/tickets?status=unresolved&view=tickets" className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
-              <span className="text-primary">unresolved tickets</span>
+            <Link to="/tickets?status=incomplete&view=tickets" className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">
+              <span className="text-primary">incomplete tickets</span>
               <span className="text-primary">{counts.total}</span>
             </Link>
             <Link to="/tickets?status=resolved&view=tickets" className="flex justify-between px-2 py-1 rounded-md hover:bg-primary/5">

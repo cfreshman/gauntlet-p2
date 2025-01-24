@@ -118,9 +118,16 @@ export function TicketList() {
     localStorage.setItem(FILTER_STORAGE_KEY, newParams.toString())
   }
 
-  // Load usernames when tickets change
+  // Load usernames when filters change or tickets change
   useEffect(() => {
     const userIds = new Set<string>()
+    
+    // Add assigned_id from URL if present
+    if (assignedId) {
+      userIds.add(assignedId)
+    }
+    
+    // Add usernames from tickets
     tickets.forEach(ticket => {
       userIds.add(ticket.created_by)
       if (ticket.assigned_to) userIds.add(ticket.assigned_to)
@@ -129,7 +136,7 @@ export function TicketList() {
     userIds.forEach(userId => {
       fetchUsername(userId)
     })
-  }, [tickets])
+  }, [tickets, assignedId])
 
   // Load tickets when filters change
   useEffect(() => {
@@ -230,7 +237,7 @@ export function TicketList() {
       // Apply filters
       if (statusFilter === 'active') {
         query = query.neq('status', 'closed')
-      } else if (statusFilter === 'unresolved') {
+      } else if (statusFilter === 'incomplete') {
         query = query.not('status', 'in', '(resolved,closed)')
       } else if (statusFilter === 'closed' && closedAfter === '7d') {
         // Get date 7 days ago
@@ -239,6 +246,13 @@ export function TicketList() {
         query = query
           .eq('status', 'closed')
           .gte('updated_at', sevenDaysAgo.toISOString())
+      } else if (statusFilter === 'closed') {
+        query = query.eq('status', 'closed')
+      } else if (statusFilter === 'resolved') {
+        query = query.eq('status', 'resolved')
+      } else if (statusFilter === 'completed') {
+        // Special case for dashboard links - show both resolved and closed
+        query = query.in('status', ['resolved', 'closed'])
       } else if (statusFilter !== 'all') {
         query = query.eq('status', statusFilter)
       }
@@ -403,7 +417,8 @@ export function TicketList() {
               <SelectContent>
                 <SelectItem value="all">all</SelectItem>
                 <SelectItem value="active">active</SelectItem>
-                <SelectItem value="unresolved">unresolved</SelectItem>
+                <SelectItem value="incomplete">incomplete</SelectItem>
+                <SelectItem value="completed">completed</SelectItem>
                 <SelectItem value="new">new</SelectItem>
                 <SelectItem value="open">open</SelectItem>
                 <SelectItem value="pending">pending</SelectItem>
@@ -524,24 +539,20 @@ export function TicketList() {
             <Select
               value={assignedId || teamId || assignedFilter}
               onValueChange={(value) => {
-                const params = new URLSearchParams(searchParams)
-                
-                // Clear both assigned_id and team_id when selecting standard options
                 if (['any', 'unassigned', 'my-team', 'me'].includes(value)) {
-                  params.delete('assigned_id')
-                  params.delete('team_id') 
-                  params.set('assigned', value)
+                  updateParams({
+                    assigned: value === 'any' ? null : value,
+                    assigned_id: null,
+                    team_id: null
+                  })
+                } else {
+                  // For specific user or team assignments
+                  updateParams({
+                    assigned: null,
+                    assigned_id: value === assignedId ? null : value,
+                    team_id: value === teamId ? null : value
+                  })
                 }
-                // Clear the other param when setting one
-                else if (value === assignedId) {
-                  params.delete('assigned_id')
-                  params.delete('assigned')
-                }
-                else if (value === teamId) {
-                  params.delete('team_id')
-                  params.delete('assigned') 
-                }
-                setSearchParams(params)
               }}
             >
               <SelectTrigger>
