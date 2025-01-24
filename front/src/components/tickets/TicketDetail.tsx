@@ -29,6 +29,17 @@ interface Comment {
   internal: boolean
 }
 
+interface TicketEvent {
+  id: string
+  event_type: 'status' | 'assignment' | 'priority'
+  old_value: string | null
+  new_value: string | null
+  created_at: string
+  user_id: string
+}
+
+type TimelineItem = Comment | TicketEvent
+
 interface TicketFeedback {
   id: string
   rating: number
@@ -52,6 +63,8 @@ export function TicketDetail() {
   const { usernames, fetchUsername } = useUsernames()
   const [ticket, setTicket] = useState<TicketWithProfile | null>(null)
   const [comments, setComments] = useState<Comment[]>([])
+  const [events, setEvents] = useState<TicketEvent[]>([])
+  const [showEvents, setShowEvents] = useState(false)
   const [feedback, setFeedback] = useState<TicketFeedback | null>(null)
   const [newComment, setNewComment] = useState('')
   const [isInternal, setIsInternal] = useState(false)
@@ -96,64 +109,36 @@ export function TicketDetail() {
   }, [tags, ticketTags, tagSearch, isManager])
 
   useEffect(() => {
-    loadTicket()
-    loadComments()
-    loadFeedback()
-
-    const channel = supabase
-      .channel('ticket')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'tickets',
-          filter: `id=eq.${id}`
-        },
-        (payload) => {
-          console.log('Ticket changed:', payload)
-          loadTicket()
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'ticket_comments',
-          filter: `ticket_id=eq.${id}`
-        },
-        () => {
-          loadComments()
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'ticket_comments',
-        },
-        () => {
-          loadComments()
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'ticket_feedback',
-          filter: `ticket_id=eq.${id}`
-        },
-        () => {
-          loadFeedback()
-        }
-      )
+    if (!id) return
+    
+    // Load comments
+    const commentsChannel = supabase
+      .channel('comments')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'ticket_comments',
+        filter: `ticket_id=eq.${id}`
+      }, handleCommentChange)
+      // Subscribe to events
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'ticket_events',
+        filter: `ticket_id=eq.${id}`
+      }, handleEventChange)
       .subscribe()
 
+    // Load all data
+    Promise.all([
+      loadTicket(),
+      loadComments(),
+      loadEvents(),
+      loadFeedback()
+    ])
+
     return () => {
-      channel.unsubscribe()
+      commentsChannel.unsubscribe()
     }
   }, [id])
 
@@ -170,10 +155,18 @@ export function TicketDetail() {
       fetchUsername(comment.created_by)
     })
 
+    events.forEach(event => {
+      fetchUsername(event.user_id)
+      if (event.event_type === 'assignment') {
+        if (event.old_value) fetchUsername(event.old_value)
+        if (event.new_value) fetchUsername(event.new_value)
+      }
+    })
+
     if (feedback) {
       fetchUsername(feedback.created_by)
     }
-  }, [ticket, comments, feedback])
+  }, [ticket, comments, events, feedback, fetchUsername])
 
   async function loadTicket() {
     try {
@@ -230,17 +223,51 @@ export function TicketDetail() {
     }
   }
 
+  async function loadEvents() {
+    if (!id) return
+
+    try {
+      const { data, error } = await supabase
+        .from('ticket_events')
+        .select('*')
+        .eq('ticket_id', id)
+        .order('created_at', { ascending: true })
+
+      if (error) throw error
+      setEvents(data)
+    } catch (e) {
+      console.error('Error loading events:', e)
+      setError('failed to load events')
+    }
+  }
+
+  function handleCommentChange(payload: any) {
+    if (!payload.new || !id) return
+    
+    if (payload.eventType === 'INSERT') {
+      setComments(prev => [...prev, payload.new])
+    }
+  }
+
+  function handleEventChange(payload: any) {
+    if (!payload.new || !id) return
+    
+    if (payload.eventType === 'INSERT') {
+      setEvents(prev => [...prev, payload.new])
+    }
+  }
+
   async function handleStatusChange(status: TicketStatus) {
     if (!user || !ticket) return
     setUpdatingTicket(true)
     
     try {
-      const { error } = await supabase
-        .from('tickets')
-        .update({ status })
-        .eq('id', ticket.id)
-        .select()
-        .single()
+      const { error } = await supabase.functions.invoke('update-ticket', {
+        body: {
+          id: ticket.id,
+          status
+        }
+      })
 
       if (error) throw error
       setTicket(prev => prev ? { ...prev, status } : null)
@@ -573,6 +600,19 @@ export function TicketDetail() {
     } finally {
       setUpdatingTicket(false)
     }
+  }
+
+  // Merge comments and events chronologically
+  const timeline: TimelineItem[] = [...comments, ...events].sort((a, b) => 
+    new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  )
+
+  // Get user ID from either comment or event
+  function getTimelineItemUserId(item: TimelineItem): string {
+    if ('user_id' in item) {
+      return item.user_id // From TicketEvent
+    }
+    return item.created_by // From Comment
   }
 
   return (
@@ -962,35 +1002,86 @@ export function TicketDetail() {
         </div>
 
         <div className="bg-background border border-primary shadow rounded-lg p-4">
-          <h2 className="text-lg font-semibold text-primary mb-4">comments</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-semibold text-primary">comments</h2>
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={showEvents}
+                onCheckedChange={setShowEvents}
+                id="show-events"
+              />
+              <label
+                htmlFor="show-events"
+                className="text-sm text-primary/70 cursor-pointer"
+              >
+                show status updates
+              </label>
+            </div>
+          </div>
           <div className="space-y-4">
-            {comments.map(comment => (
-              <div key={comment.id} className="border-b border-primary/20 last:border-0 pb-4">
-                <div className="flex justify-between items-start">
-                  <div className="text-sm text-primary/70">
-                    <span className="font-medium text-primary">{usernames[comment.created_by] || 'unknown'}</span>
-                    <span className="mx-2">·</span>
-                    <span>{new Date(comment.created_at).toLocaleString()}</span>
-                    {comment.internal && (
-                      <>
-                        <span className="mx-2">·</span>
-                        <span className="text-yellow-500">internal</span>
-                      </>
-                    )}
-                  </div>
-                  {(profile?.role === 'manager' || (profile?.role === 'customer' && comment.created_by === user?.id)) && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleDeleteComment(comment.id)}
-                    >
-                      <TrashIcon className="h-4 w-4" />
-                    </Button>
+            {timeline
+              .filter(item => 
+                'content' in item || // Show all comments
+                showEvents // Only show events if toggle is on
+              )
+              .map(item => (
+                <div 
+                  key={item.id} 
+                  className="border-b border-primary/20 last:border-0 pb-4"
+                >
+                  {'content' in item ? (
+                    <>
+                      <div className="flex justify-between items-start">
+                        <div className="text-sm text-primary/70">
+                          <span className="font-medium text-primary">
+                            {usernames[getTimelineItemUserId(item)] || 'unknown'}
+                          </span>
+                          <span className="mx-2">·</span>
+                          <span>{new Date(item.created_at).toLocaleString()}</span>
+                          {'internal' in item && item.internal && (
+                            <>
+                              <span className="mx-2">·</span>
+                              <span className="text-yellow-500">internal</span>
+                            </>
+                          )}
+                        </div>
+                        {(profile?.role === 'manager' || (profile?.role === 'customer' && item.created_by === user?.id)) && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleDeleteComment(item.id)}
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                      <FormattedText text={item.content} className="mt-2 text-primary whitespace-pre-wrap" />
+                    </>
+                  ) : (
+                    <div className="text-sm text-primary/70">
+                      <span className="font-medium text-primary">{usernames[item.user_id] || 'unknown'}</span>
+                      <span className="mx-2">·</span>
+                      <span>{new Date(item.created_at).toLocaleString()}</span>
+                      <span className="mx-2">·</span>
+                      {item.event_type === 'status' && (
+                        <>status changed from <span className="text-primary">{item.old_value || 'none'}</span> to <span className="text-primary">{item.new_value}</span></>
+                      )}
+                      {item.event_type === 'priority' && (
+                        <>priority changed from <span className="text-primary">{item.old_value || 'none'}</span> to <span className="text-primary">{item.new_value}</span></>
+                      )}
+                      {item.event_type === 'assignment' && (
+                        <>
+                          {item.new_value ? (
+                            <>assigned to <span className="text-primary">{usernames[item.new_value] || 'unknown'}</span></>
+                          ) : (
+                            <>unassigned from <span className="text-primary">{usernames[item.old_value || ''] || 'unknown'}</span></>
+                          )}
+                        </>
+                      )}
+                    </div>
                   )}
                 </div>
-                <FormattedText text={comment.content} className="mt-2 text-primary whitespace-pre-wrap" />
-              </div>
-            ))}
+              ))}
           </div>
 
           <div className="mt-6 pt-4 border-t border-primary/20">

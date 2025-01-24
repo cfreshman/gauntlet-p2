@@ -942,3 +942,58 @@ create trigger set_ticket_feedback_created_by
   before insert on ticket_feedback
   for each row
   execute function handle_auth_user();
+
+-- Create ticket_events table
+create table ticket_events (
+  id uuid primary key default uuid_generate_v4(),
+  ticket_id uuid references tickets on delete cascade not null,
+  user_id uuid references auth.users not null,
+  event_type text not null check (event_type in ('status', 'assignment', 'priority')),
+  old_value text,
+  new_value text,
+  created_at timestamptz default now() not null
+);
+
+-- RLS for ticket_events
+alter table ticket_events enable row level security;
+
+create policy "Users can view events for tickets they can access"
+  on ticket_events for select
+  using (
+    exists (
+      select 1 from tickets t
+      left join team_members tm on tm.team_id = t.team_id
+      where t.id = ticket_events.ticket_id
+      and (
+        -- Customers can see their tickets
+        t.created_by = auth.uid()
+        -- Workers can see unrestricted tickets or tickets assigned to them/their team
+        or (
+          exists (
+            select 1 from profiles
+            where id = auth.uid()
+            and role = 'worker'
+          )
+          and (
+            not t.restricted
+            or t.assigned_to = auth.uid()
+            or tm.user_id = auth.uid()
+          )
+        )
+        -- Managers can see all tickets
+        or exists (
+          select 1 from profiles
+          where id = auth.uid()
+          and role = 'manager'
+        )
+      )
+    )
+  );
+
+-- Only the edge function can insert events
+create policy "Edge function can insert events"
+  on ticket_events for insert
+  with check (auth.jwt()->>'role' = 'service_role');
+
+-- Enable realtime
+alter publication supabase_realtime add table ticket_events;

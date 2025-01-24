@@ -49,7 +49,14 @@ serve(async (req) => {
     // Get current ticket to check permissions
     const { data: currentTicket, error: ticketError } = await supabase
       .from('tickets')
-      .select('created_by, assigned_to, team_id, title')
+      .select(`
+        created_by,
+        assigned_to,
+        team_id,
+        title,
+        status,
+        priority
+      `)
       .eq('id', id)
       .single()
 
@@ -122,6 +129,43 @@ serve(async (req) => {
       .single()
 
     if (updateError) throw updateError
+
+    // Log events for state changes
+    if (updateData.status && currentTicket.status !== updateData.status) {
+      await supabase
+        .from('ticket_events')
+        .insert({
+          ticket_id: id,
+          user_id: user.id,
+          event_type: 'status',
+          old_value: currentTicket.status,
+          new_value: updateData.status
+        })
+    }
+
+    if (updateData.assigned_to !== undefined && currentTicket.assigned_to !== updateData.assigned_to) {
+      await supabase
+        .from('ticket_events')
+        .insert({
+          ticket_id: id,
+          user_id: user.id,
+          event_type: 'assignment',
+          old_value: currentTicket.assigned_to || 'unassigned',
+          new_value: updateData.assigned_to || 'unassigned'
+        })
+    }
+
+    if (updateData.priority && currentTicket.priority !== updateData.priority) {
+      await supabase
+        .from('ticket_events')
+        .insert({
+          ticket_id: id,
+          user_id: user.id,
+          event_type: 'priority',
+          old_value: currentTicket.priority,
+          new_value: updateData.priority
+        })
+    }
 
     // Create notification if someone else assigned the ticket
     if (assigned_to && assigned_to !== user.id) {
