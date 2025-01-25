@@ -49,7 +49,7 @@ export function ResetPassword() {
           <CardContent className="pt-4 text-center space-y-4">
             <div className="mb-4">
               <h1 className="text-lg font-semibold">auto-crm</h1>
-              <p className="text-sm text-gray-600">check your email for a reset link</p>
+              <p className="text-sm text-primary/70">check your email for a reset link</p>
             </div>
             <Button variant="ghost" asChild className="w-full">
               <Link to="/login">back to login</Link>
@@ -60,7 +60,7 @@ export function ResetPassword() {
             <CardContent className="pt-4">
               <div className="text-center mb-4">
                 <h1 className="text-lg font-semibold">auto-crm</h1>
-                <p className="text-sm text-gray-600">reset your password</p>
+                <p className="text-sm text-primary/70">reset your password</p>
               </div>
               {error && (
                 <p className="mb-2 text-sm text-destructive">{error}</p>

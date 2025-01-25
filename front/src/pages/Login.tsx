@@ -71,6 +71,9 @@ export function Login() {
             <Button variant="ghost" asChild className="w-full">
               <Link to="/signup" state={location.state}>need an account?</Link>
             </Button>
+            <Button variant="ghost" asChild className="w-full">
+              <Link to="/reset-password">forgot password?</Link>
+            </Button>
           </CardFooter>
         </form>
       </Card>
