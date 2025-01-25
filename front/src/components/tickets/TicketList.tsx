@@ -579,11 +579,12 @@ export function TicketList() {
         <div className="divide-y divide-primary/20">
           {tickets.length > 0 ? (
             tickets.map(ticket => (
-              <div key={ticket.id} className="hover:bg-primary/5 p-4">
-                <Link 
-                  to={`/tickets/${ticket.id}`}
-                  className="block"
-                >
+              <Link
+                key={ticket.id}
+                to={`/tickets/${ticket.id}`}
+                className="block border-b border-primary/10 dithered-hover"
+              >
+                <div className="p-4">
                   <div className="text-lg font-medium text-primary hover:text-primary/90 mb-1">
                     {ticket.title}
                   </div>
@@ -649,8 +650,8 @@ export function TicketList() {
                       </span>
                     )}
                   </div>
-                </Link>
-              </div>
+                </div>
+              </Link>
             ))
           ) : (
             <div className="p-8 text-center text-primary/70">

@@ -4,7 +4,6 @@
  
 @layer base {
   :root {
-    /* Previous green theme: 142 70% 45% */
     --background: 0 0% 7%;
     --foreground: var(--primary);
     --card: 0 0% 7%;
@@ -35,5 +34,32 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@keyframes scroll-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(10px); }
+}
+
+@keyframes drift-1 {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-2%, 2%); }
+}
+
+@keyframes drift-2 {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(2%, -2%); }
+}
+
+@layer utilities {
+  .animate-drift-1 {
+    animation: drift-1 20s ease-in-out infinite;
+  }
+  .animate-drift-2 {
+    animation: drift-2 25s ease-in-out infinite;
+  }
+  .animate-scroll {
+    animation: scroll-bounce 2s ease-in-out infinite;
   }
 } 

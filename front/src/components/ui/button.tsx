@@ -18,6 +18,7 @@ const buttonVariants = cva(
           "bg-background text-primary shadow-sm hover:bg-background/80",
         ghost: "hover:bg-primary hover:text-background",
         link: "text-primary underline-offset-4 hover:underline",
+        dithered: "bg-background text-primary dithered-hover",
       },
       size: {
         default: "h-9 px-4 py-2",

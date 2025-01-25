@@ -13,8 +13,9 @@ export function Header() {
   const { profile, signOut } = useAuth();
 
   return (
-    <header className="h-12 bg-header border-b border-primary/20">
-      <div className="max-w-5xl mx-auto px-4 h-full flex items-center justify-between">
+    <header className="relative h-12 bg-header border-b border-primary/20 dithered">
+      <div className="noise-texture absolute inset-0" />
+      <div className="relative h-full max-w-screen-2xl mx-auto px-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link to="/" className="text-sm font-medium">
             auto-crm
