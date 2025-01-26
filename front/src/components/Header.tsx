@@ -30,20 +30,12 @@ export function Header() {
                 tickets
               </Link>
               {(profile.role === 'worker' || profile.role === 'manager') && (
-                <>
-                  <Link 
-                    to="/kb" 
-                    className="text-sm text-primary/70 hover:text-primary"
-                  >
-                    knowledge base
-                  </Link>
-                  <Link 
-                    to="/help" 
-                    className="text-sm text-primary/70 hover:text-primary"
-                  >
-                    help center
-                  </Link>
-                </>
+                <Link 
+                  to="/kb" 
+                  className="text-sm text-primary/70 hover:text-primary"
+                >
+                  knowledge base
+                </Link>
               )}
               {profile.role === 'customer' && (
                 <Link 
