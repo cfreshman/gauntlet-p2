@@ -11,6 +11,7 @@ import type { Tag } from '../../lib/hooks/useTags'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '../ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import { ChevronsUpDown } from 'lucide-react'
+import { Input } from '../ui/input'
 
 interface TicketWithProfile extends Ticket {
   assigned_to: string | null
@@ -52,6 +53,7 @@ export function TicketList() {
   const { teams } = useTeams()
   const [tickets, setTickets] = useState<TicketWithProfile[]>([])
   const [loading, setLoading] = useState(true)
+  const [searchLoading, setSearchLoading] = useState(false)
   const [error, setError] = useState('')
   const [searchParams, setSearchParams] = useSearchParams()
   const [ready, setReady] = useState(false)
@@ -59,6 +61,11 @@ export function TicketList() {
   const [usedTags, setUsedTags] = useState<Tag[]>([])
   const [tagSearchOpen, setTagSearchOpen] = useState(false)
   const [tagSearch, setTagSearch] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<null | Array<{
+    id: string
+    similarity: number
+  }>>(null)
 
   // Restore filters from storage if URL is empty
   useEffect(() => {
@@ -202,10 +209,67 @@ export function TicketList() {
     loadUsedTags()
   }, [])
 
+  // Update handleSearch to use searchLoading
+  async function handleSearch() {
+    if (!searchQuery.trim()) {
+      setSearchResults(null)
+      return
+    }
+
+    setSearchLoading(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('search-similar-tickets', {
+        body: { query: searchQuery }
+      })
+
+      if (error) throw error
+      setSearchResults(data.tickets)
+    } catch (err) {
+      console.error('Error searching tickets:', err)
+      setError('Failed to search tickets')
+    } finally {
+      setSearchLoading(false)
+    }
+  }
+
+  // Update loadTickets to use main loading state
   async function loadTickets() {
     try {
       setLoading(true)
       setError('')
+
+      // If we have search results, only load those tickets
+      if (searchResults) {
+        const ticketIds = searchResults.map(r => r.id)
+        let query = supabase
+          .from('tickets')
+          .select(`
+            *,
+            feedback:ticket_feedback (
+              rating
+            ),
+            ticket_tag_links!${tagFilter !== 'all' ? 'inner' : 'left'} (
+              ticket_tags (
+                id,
+                name
+              )
+            )
+          `)
+          .in('id', ticketIds)
+
+        const { data, error } = await query
+        if (error) throw error
+
+        // Sort by similarity score
+        const sortedData = data.sort((a, b) => {
+          const aScore = searchResults.find(r => r.id === a.id)?.similarity ?? 0
+          const bScore = searchResults.find(r => r.id === b.id)?.similarity ?? 0
+          return bScore - aScore
+        })
+
+        setTickets(sortedData)
+        return
+      }
 
       let query = supabase
         .from('tickets')
@@ -332,13 +396,33 @@ export function TicketList() {
     }
   }
 
-  if (loading) return (
+  // Add effect to reload tickets when search results change
+  useEffect(() => {
+    loadTickets()
+  }, [searchResults])
+
+  // Add debounced search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery.trim()) {
+        handleSearch()
+      } else {
+        setSearchResults(null)
+      }
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  // Update the render logic to handle both loading states
+  if (loading && !searchResults) return (
     <div className="max-w-5xl mx-auto px-4 py-6">
       <div className="flex items-center justify-center h-32 text-primary/70">
         loading tickets...
       </div>
     </div>
   )
+
   if (error) return (
     <div className="max-w-5xl mx-auto px-4 py-6">
       <div className="flex items-center justify-center h-32 text-red-500">
@@ -403,7 +487,16 @@ export function TicketList() {
         </div>
       </div>
 
-      {profile?.role !== 'customer' && (
+      <div className="mb-4">
+        <Input
+          type="text"
+          placeholder="search tickets by title, description, comments"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </div>
+
+      {!searchQuery && profile?.role !== 'customer' && (
         <div className="flex gap-4 mb-4">
           <div>
             <label className="block text-sm text-primary/70 mb-1">status</label>
@@ -577,7 +670,11 @@ export function TicketList() {
 
       <div className="bg-background border border-primary shadow rounded-lg overflow-hidden">
         <div className="divide-y divide-primary/20">
-          {tickets.length > 0 ? (
+          {searchLoading ? (
+            <div className="flex items-center justify-center h-32 text-primary/70">
+              searching tickets...
+            </div>
+          ) : tickets.length > 0 ? (
             tickets.map(ticket => (
               <Link
                 key={ticket.id}
@@ -587,6 +684,11 @@ export function TicketList() {
                 <div className="p-4">
                   <div className="text-lg font-medium text-primary hover:text-primary/90 mb-1">
                     {ticket.title}
+                    {searchResults?.find(r => r.id === ticket.id) && (
+                      <span className="ml-2 text-sm text-primary/70">
+                        {Math.round(searchResults.find(r => r.id === ticket.id)!.similarity * 100)}% match
+                      </span>
+                    )}
                   </div>
                   <div className="text-sm text-primary/70 flex gap-4">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${

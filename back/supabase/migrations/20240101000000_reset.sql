@@ -3,6 +3,7 @@ DROP PUBLICATION IF EXISTS supabase_realtime;
 
 -- Drop extensions
 DROP EXTENSION IF EXISTS vector CASCADE;
+DROP EXTENSION IF EXISTS pg_net CASCADE;
 
 -- Drop all tables in public schema
 DO $$ 

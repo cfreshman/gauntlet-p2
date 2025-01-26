@@ -130,6 +130,11 @@ serve(async (req) => {
 
     if (updateError) throw updateError
 
+    // Update embedding
+    await supabase.functions.invoke('generate-ticket-embedding', {
+      body: { ticket_id: id }
+    }).catch(err => console.error('Error updating embedding:', err))
+
     // Log events for state changes
     if (updateData.status && currentTicket.status !== updateData.status) {
       await supabase

@@ -1,5 +1,6 @@
--- Enable vector extension for similarity search
+-- Enable required extensions
 CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS "pg_net";
 
 -- KB article embeddings for RAG
 CREATE TABLE kb_embeddings (
@@ -93,6 +94,55 @@ BEGIN
     -- Filter out empty content
     AND LENGTH(a.title) >= min_content_length
   ORDER BY e.embedding <-> query_embedding ASC
+  LIMIT match_count;
+END;
+$$;
+
+-- Search function for similar tickets
+CREATE OR REPLACE FUNCTION search_similar_tickets(
+  query_embedding vector(1536),
+  match_threshold float,
+  match_count int,
+  requesting_user_id uuid
+)
+RETURNS TABLE (
+  id uuid,
+  title text,
+  description text,
+  status text,
+  priority text,
+  created_at timestamptz,
+  similarity float
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    t.id,
+    t.title,
+    t.description,
+    t.status,
+    t.priority,
+    t.created_at,
+    1 - (e.embedding <-> query_embedding) as similarity
+  FROM ticket_embeddings e
+  JOIN tickets t ON t.id = e.ticket_id
+  WHERE
+    -- Apply RLS: staff can see all tickets, customers only their own
+    (
+      -- Check if user is staff
+      EXISTS (
+        SELECT 1 FROM profiles p 
+        WHERE p.id = requesting_user_id 
+        AND (p.role = 'worker' OR p.role = 'manager')
+      )
+      -- If not staff, only show user's tickets
+      OR t.created_by = requesting_user_id
+    )
+    -- Similarity threshold
+    AND 1 - (e.embedding <-> query_embedding) > match_threshold
+  ORDER BY e.embedding <-> query_embedding
   LIMIT match_count;
 END;
 $$; 

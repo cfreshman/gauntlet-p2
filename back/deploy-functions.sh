@@ -77,5 +77,7 @@ supabase functions deploy upsert-article --project-ref $PROJECT_REF
 supabase functions deploy generate-embedding --project-ref $PROJECT_REF
 supabase functions deploy update-kb-embedding --project-ref $PROJECT_REF
 supabase functions deploy search-kb --project-ref $PROJECT_REF
+supabase functions deploy generate-ticket-embedding --project-ref $PROJECT_REF
+supabase functions deploy search-similar-tickets --project-ref $PROJECT_REF
 
 echo "All functions deployed to $1 project: $PROJECT_REF" 

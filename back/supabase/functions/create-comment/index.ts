@@ -44,6 +44,16 @@ serve(async (req) => {
 
     if (commentError) throw commentError
 
+    // Update ticket embedding - don't block on errors
+    try {
+      await supabase.functions.invoke('generate-ticket-embedding', {
+        body: { ticket_id }
+      })
+    } catch (err) {
+      // Log but don't fail the comment creation
+      console.error('Error updating embedding:', err)
+    }
+
     return new Response(
       JSON.stringify({ comment }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

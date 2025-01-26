@@ -22,6 +22,16 @@ serve(async (req) => {
     const { id } = await req.json()
     if (!id) throw new Error('comment id required')
 
+    // Get ticket_id before deletion
+    const { data: comment, error: getError } = await supabase
+      .from('ticket_comments')
+      .select('ticket_id')
+      .eq('id', id)
+      .single()
+
+    if (getError) throw getError
+    if (!comment) throw new Error('comment not found')
+
     // Delete comment
     const { error: deleteError } = await supabase
       .from('ticket_comments')
@@ -29,6 +39,11 @@ serve(async (req) => {
       .eq('id', id)
 
     if (deleteError) throw deleteError
+
+    // Update ticket embedding
+    await supabase.functions.invoke('generate-ticket-embedding', {
+      body: { ticket_id: comment.ticket_id }
+    }).catch(err => console.error('Error updating embedding:', err))
 
     return new Response(
       JSON.stringify({ success: true }),

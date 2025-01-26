@@ -58,6 +58,11 @@ serve(async (req) => {
     }
     console.log('Created ticket:', ticket)
 
+    // Generate embedding
+    await supabase.functions.invoke('generate-ticket-embedding', {
+      body: { ticket_id: ticket.id }
+    }).catch(err => console.error('Error generating embedding:', err))
+
     // Add required skills if provided
     if (required_skills?.length) {
       const { error: skillsError } = await supabase
@@ -113,7 +118,7 @@ serve(async (req) => {
         throw tagsError
       }
     }
-
+    
     return new Response(
       JSON.stringify({ ticket }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
