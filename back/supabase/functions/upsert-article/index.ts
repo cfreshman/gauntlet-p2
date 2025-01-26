@@ -23,10 +23,11 @@ serve(async (req) => {
     );
 
     // Get auth user
+    const authHeader = req.headers.get("Authorization")?.split(" ")[1] ?? "";
     const {
       data: { user },
       error: userError,
-    } = await supabase.auth.getUser(req.headers.get("Authorization")?.split(" ")[1] ?? "");
+    } = await supabase.auth.getUser(authHeader);
 
     if (userError || !user) {
       return new Response(JSON.stringify({ error: "unauthorized" }), {
@@ -150,6 +151,23 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
+    }
+
+    // Update article embedding
+    try {
+      const { error: embedError } = await supabase.functions.invoke('update-kb-embedding', {
+        body: { 
+          article_id: articleId,
+          title: body.title,
+          content: body.content
+        }
+      });
+
+      if (embedError) {
+        console.error('Failed to update embedding:', embedError);
+      }
+    } catch (embedError) {
+      console.error('Error updating embedding:', embedError);
     }
 
     return new Response(JSON.stringify({ article }), {

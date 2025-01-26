@@ -4,15 +4,16 @@ CREATE EXTENSION IF NOT EXISTS vector;
 -- KB article embeddings for RAG
 CREATE TABLE kb_embeddings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  article_id uuid REFERENCES kb_articles(id) ON DELETE CASCADE,
+  article_id uuid REFERENCES kb_articles(id) ON DELETE CASCADE UNIQUE,
   embedding vector(1536), -- OpenAI embedding size
   created_at timestamptz DEFAULT now()
 );
 
 -- Create index for KB similarity search
+DROP INDEX IF EXISTS kb_embeddings_idx;
 CREATE INDEX kb_embeddings_idx ON kb_embeddings 
-USING ivfflat (embedding vector_cosine_ops)
-WITH (lists = 100);
+USING hnsw (embedding vector_cosine_ops)
+WITH (m = 16, ef_construction = 64);
 
 -- Ticket embeddings for historical matching
 CREATE TABLE ticket_embeddings (
@@ -24,9 +25,10 @@ CREATE TABLE ticket_embeddings (
 );
 
 -- Create index for ticket similarity search
+DROP INDEX IF EXISTS ticket_embeddings_idx;
 CREATE INDEX ticket_embeddings_idx ON ticket_embeddings 
-USING ivfflat (embedding vector_cosine_ops)
-WITH (lists = 100);
+USING hnsw (embedding vector_cosine_ops)
+WITH (m = 16, ef_construction = 64);
 
 -- RLS Policies
 
@@ -41,6 +43,11 @@ CREATE POLICY "System can insert kb_embeddings"
   ON kb_embeddings FOR INSERT
   WITH CHECK (true);
 
+CREATE POLICY "System can update kb_embeddings"
+  ON kb_embeddings FOR UPDATE
+  USING (true)
+  WITH CHECK (true);
+
 -- Ticket embeddings policies
 ALTER TABLE ticket_embeddings ENABLE ROW LEVEL SECURITY;
 
@@ -50,4 +57,42 @@ CREATE POLICY "Anyone can read ticket_embeddings"
 
 CREATE POLICY "System can insert ticket_embeddings"
   ON ticket_embeddings FOR INSERT
-  WITH CHECK (true); 
+  WITH CHECK (true);
+
+-- Search function for KB articles
+CREATE OR REPLACE FUNCTION search_kb_articles(
+  query_embedding vector(1536),
+  match_threshold float,
+  match_count int,
+  min_content_length int,
+  is_staff boolean
+)
+RETURNS TABLE (
+  id uuid,
+  title text,
+  summary text,
+  storage_path text,
+  similarity float
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  -- For small datasets, do a full table scan with L2 distance
+  RETURN QUERY
+  SELECT
+    a.id,
+    a.title,
+    a.summary,
+    a.storage_path,
+    1 - (e.embedding <-> query_embedding) as similarity
+  FROM kb_embeddings e
+  JOIN kb_articles a ON a.id = e.article_id
+  WHERE
+    -- Staff can see all articles, customers only published ones
+    (is_staff OR a.published = true)
+    -- Filter out empty content
+    AND LENGTH(a.title) >= min_content_length
+  ORDER BY e.embedding <-> query_embedding ASC
+  LIMIT match_count;
+END;
+$$; 

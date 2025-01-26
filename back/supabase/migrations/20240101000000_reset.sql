@@ -1,6 +1,9 @@
 -- Drop our publication first (ignore Supabase's internal ones)
 DROP PUBLICATION IF EXISTS supabase_realtime;
 
+-- Drop extensions
+DROP EXTENSION IF EXISTS vector CASCADE;
+
 -- Drop all tables in public schema
 DO $$ 
 DECLARE 

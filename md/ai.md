@@ -5,11 +5,11 @@
 2. Historical Ticket RAG  
 3. Ticket Processing Agent
 
-## Implementation Phases
+## Implementation Progress
 
-### Phase 1: KB Article RAG (Day 1-2)
+### Phase 1: KB Article RAG (✅ Complete)
 
-1. Infrastructure
+1. ✅ Infrastructure
 ```sql
 -- Enable vector extension
 CREATE EXTENSION IF NOT EXISTS vector;
@@ -28,72 +28,81 @@ USING ivfflat (embedding vector_cosine_ops)
 WITH (lists = 100);
 ```
 
-2. Edge Functions
-- `generate-embedding`: Convert text to OpenAI embedding
-- `update-kb-embedding`: Create/update article embeddings
-- `search-kb`: Similarity search KB articles
+2. ✅ Edge Functions
+- ✅ `generate-embedding`: Convert text to OpenAI embedding
+  - Takes text input
+  - Returns 1536-dimensional embedding vector
+  - Uses OpenAI's text-embedding-ada-002 model
 
-3. Integration
-- Hook into KB article creation/update
-- Add embedding generation to article workflow
-- Implement basic similarity search API
+- ✅ `update-kb-embedding`: Create/update article embeddings
+  - Called automatically from upsert-article
+  - Receives title and content directly
+  - Generates embeddings for all articles (both published/unpublished)
 
-### Phase 2: Historical Ticket RAG (Day 3)
+- ✅ `search-kb`: Similarity search KB articles
+  - Implements visibility rules:
+    - Customers: only published articles
+    - Staff: all articles
+  - Returns most similar articles with scores
+  - Includes configurable thresholds and limits
 
-1. Infrastructure
-```sql
--- Ticket embeddings
-CREATE TABLE ticket_embeddings (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  ticket_id uuid REFERENCES tickets(id) ON DELETE CASCADE,
-  embedding vector(1536),
-  metadata jsonb, -- Store resolution info, skills used, etc.
-  created_at timestamptz DEFAULT now()
-);
+3. ✅ Integration
+- ✅ Hook into KB article creation/update
+- ✅ Add embedding generation to article workflow
+- ✅ Implement similarity search API with RLS
 
--- Create index for similarity search
-CREATE INDEX ticket_embeddings_idx ON ticket_embeddings 
-USING ivfflat (embedding vector_cosine_ops)
-WITH (lists = 100);
-```
+### Phase 2: Historical Ticket RAG (🔄 In Progress)
 
-2. Edge Functions
-- `update-ticket-embedding`: Create ticket embeddings
-- `search-tickets`: Similarity search historical tickets
+1. ✅ Infrastructure
+- ✅ Created ticket_embeddings table
+- ✅ Added vector indexing
+- ✅ Implemented RLS policies
 
-3. Integration
-- Add embedding generation to ticket resolution
-- Store relevant metadata (skills, team, resolution)
-- Implement ticket similarity search
+2. 🔄 Edge Functions (In Progress)
+- 🔄 `generate-ticket-embedding`: Convert ticket data to embedding
+  - Will include title, description, resolution
+  - Need to handle metadata extraction
+- 🔄 `search-similar-tickets`: Find similar historical tickets
+  - Will help agents find relevant past solutions
+  - Need to implement scoring and filtering
 
-### Phase 3: Ticket Processing Agent (Day 4-5)
+3. ⏳ Integration (Not Started)
+- Need to hook into ticket workflow
+- Add embedding updates on status changes
+- Build UI for viewing similar tickets
 
-1. Edge Functions
-- `process-new-ticket`: Main agent logic
-  1. Generate ticket embedding
-  2. Search KB articles
-  3. Search historical tickets
-  4. Make action decision
-  5. Execute action (create comment or update ticket)
+### Phase 3: Ticket Processing Agent (⏳ Not Started)
 
-2. Integration Points
-- Hook into ticket creation flow
-- Add AI processing to ticket view
-- Show matches in UI
-- Allow manual override
+1. Planning
+- Design decision tree for ticket routing
+- Define auto-response criteria
+- Plan human oversight mechanisms
+
+2. Implementation
+- Build processing pipeline
+- Integrate with existing ticket flow
+- Add monitoring and feedback loop
+
+3. Features to Build
+- Auto-categorization
+- Response suggestions
+- Priority scoring
+- Escalation rules
 
 ## Implementation Order
 
-1. KB RAG First
-   - Set up vector storage
-   - Implement embedding generation
-   - Build similarity search
+1. ✅ KB RAG Complete
+   - ✅ Set up vector storage
+   - ✅ Implement embedding generation
+   - ✅ Build similarity search
 
-2. Add Ticket RAG
-   - Reuse embedding infrastructure
-   - Add ticket metadata storage
-   - Implement ticket search
+2. 🔄 Historical Ticket RAG (Current Focus)
+   - ✅ Reuse embedding infrastructure
+   - ✅ Add ticket metadata storage
+   - 🔄 Implement ticket search
+   - ⏳ Build agent UI integration
 
-3. Processing Agent
-   - Build decision tree logic
-   - Integrate with ticket flow 
+3. ⏳ Processing Agent (Next Phase)
+   - Design decision workflows
+   - Implement processing pipeline
+   - Add monitoring and controls 

@@ -3,6 +3,13 @@ import { useSupabase } from "../../lib/hooks/useSupabase";
 import { Button } from "../ui/button";
 import { Link } from "react-router-dom";
 import { useUsernames } from "../../lib/hooks/useUsernames";
+import { Input } from "../ui/input";
+import { useDebounce } from "../../lib/hooks/useDebounce";
+
+interface SearchResult {
+  id: string;
+  similarity: number;
+}
 
 interface Article {
   id: string;
@@ -13,6 +20,7 @@ interface Article {
   created_at: string;
   created_by: string;
   version: number;
+  similarity?: number;
 }
 
 export function ArticleList() {
@@ -20,10 +28,16 @@ export function ArticleList() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const { usernames, fetchUsername } = useUsernames();
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedQuery = useDebounce(searchQuery, 300);
 
   useEffect(() => {
-    loadArticles();
-  }, []);
+    if (debouncedQuery) {
+      searchArticles(debouncedQuery);
+    } else {
+      loadArticles();
+    }
+  }, [debouncedQuery]);
 
   // Load usernames when articles change
   useEffect(() => {
@@ -34,8 +48,42 @@ export function ArticleList() {
     });
   }, [articles]);
 
+  async function searchArticles(query: string) {
+    try {
+      setLoading(true);
+      const { data: results, error } = await supabase.functions.invoke<{ articles: Array<{ id: string; similarity: number }> }>('search-kb', {
+        body: { query }
+      });
+
+      if (error) throw error;
+      if (!results?.articles) throw new Error('No results returned');
+
+      // Get full article data for each result
+      const { data: articles, error: articlesError } = await supabase
+        .from('kb_articles')
+        .select('*')
+        .in('id', results.articles.map((a: { id: string }) => a.id));
+
+      if (articlesError) throw articlesError;
+      if (!articles) throw new Error('No articles found');
+
+      // Merge similarity scores with article data
+      const articlesWithScores = articles.map(article => ({
+        ...article,
+        similarity: results.articles.find(a => a.id === article.id)?.similarity
+      }));
+
+      setArticles(articlesWithScores);
+    } catch (error) {
+      console.error('error searching articles:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function loadArticles() {
     try {
+      setLoading(true);
       // The RLS policy will automatically filter based on user role
       const { data, error } = await supabase
         .from("kb_articles")
@@ -61,9 +109,13 @@ export function ArticleList() {
     }
   }
 
-  if (loading) {
-    return <div className="flex h-32 items-center justify-center text-primary/70">loading articles...</div>;
-  }
+  // Sort articles by similarity (if searching) or date (if not)
+  const sortedArticles = [...articles].sort((a, b) => {
+    if (searchQuery && a.similarity !== undefined && b.similarity !== undefined) {
+      return b.similarity - a.similarity;
+    }
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
 
   return (
     <div className="space-y-4">
@@ -74,57 +126,81 @@ export function ArticleList() {
         </Button>
       </div>
 
+      <div className="mb-4">
+        <Input
+          type="search"
+          placeholder="search articles..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="[&::-webkit-search-cancel-button]:appearance-none"
+        />
+      </div>
+
       <div className="bg-background border border-primary shadow rounded-lg overflow-hidden">
         <div className="divide-y divide-primary/20">
-          {articles.map((article) => (
-            <div
-              key={article.id}
-              className="hover:bg-primary/5 p-4 flex items-center justify-between"
-            >
-              <div>
-                <h3 className="text-lg font-medium text-primary hover:text-primary/90 mb-1">{article.title}</h3>
-                {article.summary && (
-                  <p className="text-sm text-primary/70">{article.summary}</p>
-                )}
-                <div className="mt-2 flex items-center gap-2 text-xs text-primary/50">
-                  <span>v{article.version}</span>
-                  <span>•</span>
-                  <span>by {usernames[article.created_by] || 'unknown'}</span>
-                  <span>•</span>
-                  <span>
-                    {new Date(article.created_at).toLocaleDateString()}
-                  </span>
-                  {article.published && (
-                    <>
-                      <span>•</span>
-                      <span className="text-green-500">published</span>
-                    </>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-2 ml-4">
-                <Button size="sm" variant="ghost" asChild>
-                  <Link to={`/help/${article.id}`}>view</Link>
-                </Button>
-                <Button size="sm" variant="ghost" asChild>
-                  <Link to={`/kb/${article.id}/edit`}>edit</Link>
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-red-500"
-                  onClick={() => handleDelete(article.id)}
-                >
-                  delete
-                </Button>
-              </div>
-            </div>
-          ))}
-
-          {articles.length === 0 && (
+          {loading ? (
             <div className="flex h-[100px] items-center justify-center text-sm text-primary/70">
-              no articles yet
+              searching articles...
             </div>
+          ) : (
+            <>
+              {sortedArticles.map((article) => (
+                <div
+                  key={article.id}
+                  className="hover:bg-primary/5 p-4 flex items-center justify-between"
+                >
+                  <div>
+                    <h3 className="text-lg font-medium text-primary hover:text-primary/90 mb-1">{article.title}</h3>
+                    {article.summary && (
+                      <p className="text-sm text-primary/70">{article.summary}</p>
+                    )}
+                    <div className="mt-2 flex items-center gap-2 text-xs text-primary/50">
+                      <span>v{article.version}</span>
+                      <span>•</span>
+                      <span>by {usernames[article.created_by] || 'unknown'}</span>
+                      <span>•</span>
+                      <span>
+                        {new Date(article.created_at).toLocaleDateString()}
+                      </span>
+                      {article.published && (
+                        <>
+                          <span>•</span>
+                          <span className="text-green-500">published</span>
+                        </>
+                      )}
+                      {article.similarity !== undefined && (
+                        <>
+                          <span>•</span>
+                          <span className="text-blue-500">{Math.round(article.similarity * 100)}% match</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 ml-4">
+                    <Button size="sm" variant="ghost" asChild>
+                      <Link to={`/help/${article.id}`}>view</Link>
+                    </Button>
+                    <Button size="sm" variant="ghost" asChild>
+                      <Link to={`/kb/${article.id}/edit`}>edit</Link>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-red-500"
+                      onClick={() => handleDelete(article.id)}
+                    >
+                      delete
+                    </Button>
+                  </div>
+                </div>
+              ))}
+
+              {sortedArticles.length === 0 && (
+                <div className="flex h-[100px] items-center justify-center text-sm text-primary/70">
+                  {searchQuery ? 'no matching articles' : 'no articles yet'}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
