@@ -31,7 +31,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 
   if (!user) {
     // Pass the current location to redirect back after login
-    return <Navigate to="/signup" state={{ from: location }} />;
+    return <Navigate to="/signup" state={{ from: location }} replace />;
   }
 
   return <>{children}</>;

@@ -2,8 +2,24 @@ import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { SupabaseStatus } from '../components/ui/supabase-status';
 import { Ticket, Users, Bot, FileText } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
 
 export function Landing() {
+  const [isFirstUser, setIsFirstUser] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    async function checkFirstUser() {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id')
+        .limit(1)
+        .single();
+      setIsFirstUser(!data);
+    }
+    checkFirstUser();
+  }, []);
+
   return (
     <div className="min-h-[calc(100vh-3rem)] flex flex-col relative overflow-hidden">
       {/* Background Elements */}
@@ -19,17 +35,16 @@ export function Landing() {
             auto-crm
           </h1>
           <p className="text-lg sm:text-xl text-primary/60 max-w-lg mx-auto">
-            customer support with AI assistance
+            {isFirstUser ? 'organize your team and support customers' : 'need help? create a ticket below'}
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 w-full max-w-xs sm:max-w-md relative">
           <div className="absolute -inset-4 bg-primary/5 blur-lg rounded-lg transition-opacity group-hover:opacity-75" />
-          <Button asChild variant="outline" size="lg" className="w-full relative hover:scale-[1.02] transition-transform">
-            <Link to="/login">sign in</Link>
-          </Button>
           <Button asChild size="lg" className="w-full relative hover:scale-[1.02] transition-transform">
-            <Link to="/signup">get started</Link>
+            <Link to={isFirstUser ? "/signup" : "/tickets/new"}>
+              {isFirstUser ? 'create account' : 'create ticket'}
+            </Link>
           </Button>
         </div>
       </div>
@@ -47,7 +62,7 @@ export function Landing() {
             </h3>
             <div className="w-12 h-[1px] bg-primary/20 mx-auto group-hover:bg-primary/40 transition-colors" />
             <p className="text-sm text-primary/60">
-              track and resolve support requests
+              describe your issue
             </p>
           </div>
           <div className="p-8 space-y-4 text-center group">
@@ -55,11 +70,11 @@ export function Landing() {
               <Users className="w-8 h-8 text-primary/60 group-hover:text-primary/90 transition-colors" />
             </div>
             <h3 className="text-lg font-medium group-hover:text-primary/90 transition-colors">
-              teams
+              support
             </h3>
             <div className="w-12 h-[1px] bg-primary/20 mx-auto group-hover:bg-primary/40 transition-colors" />
             <p className="text-sm text-primary/60">
-              work together on tickets
+              we'll help you out
             </p>
           </div>
           <div className="p-8 space-y-4 text-center group">
@@ -71,7 +86,7 @@ export function Landing() {
             </h3>
             <div className="w-12 h-[1px] bg-primary/20 mx-auto group-hover:bg-primary/40 transition-colors" />
             <p className="text-sm text-primary/60">
-              automatic routing and responses
+              quick responses
             </p>
           </div>
           <div className="p-8 space-y-4 text-center group">
@@ -83,7 +98,7 @@ export function Landing() {
             </h3>
             <div className="w-12 h-[1px] bg-primary/20 mx-auto group-hover:bg-primary/40 transition-colors" />
             <p className="text-sm text-primary/60">
-              help articles and guides
+              search for answers
             </p>
           </div>
         </div>
