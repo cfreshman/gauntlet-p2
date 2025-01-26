@@ -244,6 +244,17 @@ export function ArticleEditor({
           </Tabs>
         </div>
 
+        {id && (profile?.role === 'worker' || profile?.role === 'manager') && (
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="takeOwnership"
+              checked={takeOwnership}
+              onCheckedChange={setTakeOwnership}
+            />
+            <Label htmlFor="takeOwnership">take ownership of article</Label>
+          </div>
+        )}
+
         {profile?.role === 'manager' && (
           <div className="flex items-center space-x-2">
             <Switch
@@ -252,17 +263,6 @@ export function ArticleEditor({
               onCheckedChange={setPublished}
             />
             <Label htmlFor="published">publish article</Label>
-          </div>
-        )}
-
-        {id && (
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="takeOwnership"
-              checked={takeOwnership}
-              onCheckedChange={setTakeOwnership}
-            />
-            <Label htmlFor="takeOwnership">take ownership</Label>
           </div>
         )}
       </div>

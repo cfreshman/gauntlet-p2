@@ -20,6 +20,7 @@ import { ChevronsUpDown, TrashIcon, Star } from 'lucide-react'
 import { Switch } from '../ui/switch'
 import { Label } from '../ui/label'
 import { FormattedText } from '../ui/formatted-text'
+import { SimilarTickets } from './SimilarTickets'
 
 interface Comment {
   id: string
@@ -127,6 +128,17 @@ export function TicketDetail() {
         table: 'ticket_events',
         filter: `ticket_id=eq.${id}`
       }, handleEventChange)
+      // Subscribe to ticket changes
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'tickets',
+        filter: `id=eq.${id}`
+      }, (payload: { eventType: string, new: any, old: any }) => {
+        if (payload.new) {
+          setTicket(payload.new as TicketWithProfile)
+        }
+      })
       .subscribe()
 
     // Load all data
@@ -616,506 +628,520 @@ export function TicketDetail() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6">
-      {isManager && !ticket.assigned_to && (
-        <div className="mb-4 flex justify-center">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleClaimForTeam}
-            disabled={updatingTicket}
-          >
-            {ticket.team_id ? 'unclaim from team' : 'claim for team'}
-          </Button>
-        </div>
-      )}
-      <div className="space-y-4">
-        {/* Feedback Display */}
-        {feedback && !isEditing && (
-          <div className="bg-background border border-primary shadow rounded-lg p-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold text-primary">feedback</h2>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Star
-                      key={i}
-                      className={`h-5 w-5 ${i < feedback.rating ? 'fill-yellow-500 text-yellow-500' : 'fill-primary/10 text-primary/10'}`}
-                    />
-                  ))}
-                </div>
-                {(profile?.role === 'manager' || feedback.created_by === user?.id) && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleEditFeedback}
-                  >
-                    edit
-                  </Button>
-                )}
-              </div>
+    <div className="max-w-5xl mx-auto px-4 py-6">
+      <div className={`grid ${isManagerOrWorker ? 'grid-cols-3' : 'grid-cols-1'} gap-6`}>
+        <div className={isManagerOrWorker ? 'col-span-2' : 'col-span-1'}>
+          {isManager && !ticket.assigned_to && (
+            <div className="mb-4 flex justify-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClaimForTeam}
+                disabled={updatingTicket}
+              >
+                {ticket.team_id ? 'unclaim from team' : 'claim for team'}
+              </Button>
             </div>
-            {feedback.comment && feedback.comment.trim() && (
-              <FormattedText text={feedback.comment} className="text-primary whitespace-pre-wrap mt-4" />
-            )}
-          </div>
-        )}
-
-        {/* Feedback Form */}
-        {((canLeaveFeedback && !feedback) || isEditing) && (
-          <div className="bg-background border border-primary shadow rounded-lg p-4">
-            <h2 className="text-lg font-semibold text-primary mb-4">
-              {isEditing ? 'edit feedback' : 'leave feedback'}
-            </h2>
-            <form onSubmit={handleSubmitFeedback} className="space-y-4">
-              <div>
-                <span className="text-sm text-primary/70">rating</span>
-                <div className="flex items-center gap-1 mt-1">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => setNewFeedback({ ...newFeedback, rating: i + 1 })}
-                      className="focus:outline-none"
-                    >
-                      <Star
-                        className={`h-6 w-6 ${i < newFeedback.rating ? 'fill-yellow-500 text-yellow-500' : 'fill-primary/10 text-primary/10'} hover:fill-yellow-500 hover:text-yellow-500 transition-colors`}
-                      />
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <span className="text-sm text-primary/70">comment (optional)</span>
-                <Textarea 
-                  value={newFeedback.comment}
-                  onChange={(e) => setNewFeedback({ ...newFeedback, comment: e.target.value })}
-                  placeholder="write your comment..."
-                  className="w-full mt-1"
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button type="submit" disabled={!newFeedback.rating || updatingTicket}>
-                  {updatingTicket ? 'submitting...' : isEditing ? 'update feedback' : 'submit feedback'}
-                </Button>
-                {isEditing && (
-                  <Button type="button" variant="ghost" onClick={handleCancelEdit}>
-                    cancel
-                  </Button>
-                )}
-              </div>
-            </form>
-          </div>
-        )}
-
-        {/* Main Ticket Details */}
-        <div className="bg-background border border-primary shadow rounded-lg p-4">
-          <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-2xl font-bold text-primary mb-2">
-                {isTemplate ? ticket.title.slice(9) : ticket.title}
-              </h1>
-              <div className="text-sm text-primary/70 flex gap-4">
-                <span>by {usernames[ticket.created_by] || 'unknown'}</span>
-                <span>{new Date(ticket.created_at).toLocaleString()}</span>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              {profile?.role !== 'customer' && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleShareTemplate}
-                  disabled={!isTemplate}
-                >
-                  share template
-                </Button>
-              )}
-              {(profile?.role === 'manager' || (profile?.role === 'worker' && ticket.created_by === user?.id)) && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleTemplateToggle}
-                  disabled={updatingTicket}
-                >
-                  {isTemplate ? 'remove template' : 'make template'}
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {error && (
-            <div className="mt-4 text-sm text-red-600">{error}</div>
           )}
-
-          <div className="mt-6 grid grid-cols-2 gap-4">
-            <div>
-              <span className="text-sm text-primary/70">status</span>
-              {canUpdateStatus ? (
-                <Select
-                  value={ticket.status}
-                  onValueChange={(value) => handleStatusChange(value as TicketStatus)}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="new">new</SelectItem>
-                    <SelectItem value="open">open</SelectItem>
-                    <SelectItem value="pending">pending</SelectItem>
-                    <SelectItem value="resolved">resolved</SelectItem>
-                    <SelectItem value="closed">closed</SelectItem>
-                  </SelectContent>
-                </Select>
-              ) : (
-                <p className="mt-1 font-medium text-primary">{ticket.status}</p>
-              )}
-            </div>
-
-            <div>
-              <span className="text-sm text-primary/70">priority</span>
-              {(profile?.role === 'manager' || (profile?.role === 'customer' && ticket.created_by === user?.id)) ? (
-                <Select
-                  value={ticket.priority}
-                  onValueChange={(value) => handlePriorityChange(value as TicketPriority)}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">low</SelectItem>
-                    <SelectItem value="medium">medium</SelectItem>
-                    <SelectItem value="high">high</SelectItem>
-                    <SelectItem value="urgent">urgent</SelectItem>
-                  </SelectContent>
-                </Select>
-              ) : (
-                <p className="mt-1 font-medium text-primary">{ticket.priority}</p>
-              )}
-            </div>
-
-            <div>
-              <span className="text-sm text-primary/70">tags</span>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {ticketTags.map(tag => (
-                  <div 
-                    key={tag.id}
-                    className="flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-full text-sm"
-                  >
-                    {tag.name}
-                    {(profile?.role === 'manager' || (profile?.role === 'worker' && ticket.assigned_to === user?.id)) && (
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          try {
-                            await removeTag(tag.id)
-                          } catch (e) {
-                            console.error('Error removing tag:', e)
-                            setError('failed to remove tag')
-                          }
-                        }}
-                        className="text-primary/70 hover:text-primary"
+          <div className="space-y-4">
+            {/* Feedback Display */}
+            {feedback && !isEditing && (
+              <div className="bg-background border border-primary shadow rounded-lg p-4">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-lg font-semibold text-primary">feedback</h2>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`h-5 w-5 ${i < feedback.rating ? 'fill-yellow-500 text-yellow-500' : 'fill-primary/10 text-primary/10'}`}
+                        />
+                      ))}
+                    </div>
+                    {(profile?.role === 'manager' || feedback.created_by === user?.id) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleEditFeedback}
                       >
-                        ×
-                      </button>
+                        edit
+                      </Button>
                     )}
                   </div>
-                ))}
-                {(profile?.role === 'manager' || (profile?.role === 'worker' && ticket.assigned_to === user?.id)) && (
-                  <Popover open={tagSearchOpen} onOpenChange={setTagSearchOpen}>
-                    <PopoverTrigger asChild>
-                      <button className="flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-full text-sm hover:bg-primary/20">
-                        add tag
-                        <ChevronsUpDown className="h-3 w-3 opacity-50" />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[300px] p-0 bg-background border border-primary" align="start">
-                      <Command className="w-full [&_[cmdk-input-wrapper]]:px-0">
-                        <CommandInput 
-                          placeholder="search tags..." 
-                          className="h-9 w-full ring-0 focus:ring-0 focus-visible:ring-0 text-primary placeholder:text-primary/50" 
-                          value={tagSearch} 
-                          onValueChange={setTagSearch}
-                          onKeyDown={async (e) => {
-                            if (e.key === 'Enter' && tagSearch) {
-                              e.preventDefault()
-                              if (filteredTags.length === 1) {
-                                const tag = filteredTags[0]
-                                try {
-                                  if (tag.id === 'create') {
-                                    const newTag = await createTag(tagSearch.trim())
-                                    if (newTag) {
-                                      await addTag(newTag.id)
-                                    }
-                                  } else {
-                                    await addTag(tag.id)
-                                  }
-                                  setTagSearchOpen(false)
-                                  setTagSearch('')
-                                } catch (e) {
-                                  console.error('Error with tag:', e)
-                                  setError('failed to handle tag')
-                                }
-                              }
-                            }
-                          }}
-                        />
-                        <CommandEmpty className="py-2 px-3 text-sm text-primary/50">no tags found</CommandEmpty>
-                        <CommandGroup className="max-h-[200px] overflow-y-auto">
-                          {filteredTags.map(tag => (
-                            <CommandItem
-                              key={tag.id}
-                              onSelect={async () => {
-                                try {
-                                  if (tag.id === 'create') {
-                                    const newTag = await createTag(tagSearch.trim())
-                                    if (newTag) {
-                                      await addTag(newTag.id)
-                                    }
-                                  } else {
-                                    await addTag(tag.id)
-                                  }
-                                  setTagSearchOpen(false)
-                                  setTagSearch('')
-                                } catch (e) {
-                                  console.error('Error with tag:', e)
-                                  setError('failed to handle tag')
-                                }
-                              }}
-                              className={tag.id === 'create' 
-                                ? "py-2 px-3 cursor-pointer hover:bg-primary/10 text-primary"
-                                : "py-2 px-3 cursor-pointer hover:bg-primary/10 text-primary"}
-                            >
-                              {tag.id === 'create' ? `create "${tagSearch}"` : tag.name}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
+                </div>
+                {feedback.comment && feedback.comment.trim() && (
+                  <FormattedText text={feedback.comment} className="text-primary whitespace-pre-wrap mt-4" />
                 )}
               </div>
-            </div>
+            )}
 
-            <div>
-              <span className="text-sm text-primary/70">assignee</span>
-              {profile?.role === 'manager' || (profile?.role === 'worker' && (!ticket.assigned_to || ticket.assigned_to === user?.id)) ? (
-                <Select
-                  value={ticket.assigned_to || 'unassigned'}
-                  onValueChange={(value) => handleAssignmentChange(value === 'unassigned' ? null : value)}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="unassigned">unassigned</SelectItem>
-                    {assignableMembers.map(member => (
-                      <SelectItem key={member.id} value={member.id}>
-                        {usernames[member.id] || member.username} ({member.role})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <p className="mt-1 font-medium text-primary">
-                  {ticket.assigned_to ? usernames[ticket.assigned_to] || 'unknown' : 'unassigned'}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {ticket.description && (
-            <div className="mt-6">
-              <span className="text-sm text-primary/70">description</span>
-              <FormattedText text={ticket.description} className="mt-1 text-primary whitespace-pre-wrap" />
-            </div>
-          )}
-
-          {isManager && (
-            <div className="mt-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-medium text-primary">custom fields</h3>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="ghost" size="sm">
-                      add field
+            {/* Feedback Form */}
+            {((canLeaveFeedback && !feedback) || isEditing) && (
+              <div className="bg-background border border-primary shadow rounded-lg p-4">
+                <h2 className="text-lg font-semibold text-primary mb-4">
+                  {isEditing ? 'edit feedback' : 'leave feedback'}
+                </h2>
+                <form onSubmit={handleSubmitFeedback} className="space-y-4">
+                  <div>
+                    <span className="text-sm text-primary/70">rating</span>
+                    <div className="flex items-center gap-1 mt-1">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setNewFeedback({ ...newFeedback, rating: i + 1 })}
+                          className="focus:outline-none"
+                        >
+                          <Star
+                            className={`h-6 w-6 ${i < newFeedback.rating ? 'fill-yellow-500 text-yellow-500' : 'fill-primary/10 text-primary/10'} hover:fill-yellow-500 hover:text-yellow-500 transition-colors`}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-sm text-primary/70">comment (optional)</span>
+                    <Textarea 
+                      value={newFeedback.comment}
+                      onChange={(e) => setNewFeedback({ ...newFeedback, comment: e.target.value })}
+                      placeholder="write your comment..."
+                      className="w-full mt-1"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button type="submit" disabled={!newFeedback.rating || updatingTicket}>
+                      {updatingTicket ? 'submitting...' : isEditing ? 'update feedback' : 'submit feedback'}
                     </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[300px] p-0" align="end">
-                    <Command className="w-full">
-                      <CommandInput 
-                        placeholder="search fields..." 
-                        className="h-9"
-                      />
-                      <CommandEmpty>no fields found</CommandEmpty>
-                      <CommandGroup className="max-h-[200px] overflow-y-auto">
-                        {allFields
-                          .filter(f => !fields.find(existing => existing.id === f.id))
-                          .map(field => (
-                            <CommandItem
-                              key={field.id}
-                              value={field.id}
-                              onSelect={() => handleAddField(field.id)}
-                            >
-                              <span>{field.name}</span>
-                              <span className="ml-2 text-xs text-primary/50">
-                                ({field.type}{field.required ? ", required" : ""})
-                              </span>
-                            </CommandItem>
-                          ))}
-                      </CommandGroup>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
+                    {isEditing && (
+                      <Button type="button" variant="ghost" onClick={handleCancelEdit}>
+                        cancel
+                      </Button>
+                    )}
+                  </div>
+                </form>
               </div>
-            </div>
-          )}
+            )}
 
-          {fields.length > 0 && (
-            <div className="mt-4 space-y-4">
-              {fields.map(field => (
-                <div key={field.id} className="flex items-start gap-2">
-                  <CustomField
-                    field={field}
-                    value={values[field.id] || ''}
-                    onChange={(value: string) => handleFieldValueChange(field.id, value)}
-                    mode={
-                      profile?.role === 'customer' || 
-                      (profile?.role === 'worker' && ticket.assigned_to !== user?.id) ? 
-                      'view' : 'edit'
-                    }
-                    className="flex-1"
-                  />
-                  {isManager && (
+            {/* Main Ticket Details */}
+            <div className="bg-background border border-primary shadow rounded-lg p-4">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h1 className="text-2xl font-bold text-primary mb-2">
+                    {isTemplate ? ticket.title.slice(9) : ticket.title}
+                  </h1>
+                  <div className="text-sm text-primary/70 flex gap-4">
+                    <span>by {usernames[ticket.created_by] || 'unknown'}</span>
+                    <span>{new Date(ticket.created_at).toLocaleString()}</span>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  {profile?.role !== 'customer' && (
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
-                      onClick={() => handleRemoveField(field.id)}
+                      onClick={handleShareTemplate}
+                      disabled={!isTemplate}
                     >
-                      remove
+                      share template
+                    </Button>
+                  )}
+                  {(profile?.role === 'manager' || (profile?.role === 'worker' && ticket.created_by === user?.id)) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleTemplateToggle}
+                      disabled={updatingTicket}
+                    >
+                      {isTemplate ? 'remove template' : 'make template'}
                     </Button>
                   )}
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+              </div>
 
-        <div className="bg-background border border-primary shadow rounded-lg p-4">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-primary">comments</h2>
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={showEvents}
-                onCheckedChange={setShowEvents}
-                id="show-events"
-              />
-              <label
-                htmlFor="show-events"
-                className="text-sm text-primary/70 cursor-pointer"
-              >
-                show status updates
-              </label>
+              {error && (
+                <div className="mt-4 text-sm text-red-600">{error}</div>
+              )}
+
+              <div className="mt-6 grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-sm text-primary/70">status</span>
+                  {canUpdateStatus ? (
+                    <Select
+                      value={ticket.status}
+                      onValueChange={(value) => handleStatusChange(value as TicketStatus)}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="new">new</SelectItem>
+                        <SelectItem value="open">open</SelectItem>
+                        <SelectItem value="pending">pending</SelectItem>
+                        <SelectItem value="resolved">resolved</SelectItem>
+                        <SelectItem value="closed">closed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="mt-1 font-medium text-primary">{ticket.status}</p>
+                  )}
+                </div>
+
+                <div>
+                  <span className="text-sm text-primary/70">priority</span>
+                  {(profile?.role === 'manager' || (profile?.role === 'customer' && ticket.created_by === user?.id)) ? (
+                    <Select
+                      value={ticket.priority}
+                      onValueChange={(value) => handlePriorityChange(value as TicketPriority)}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">low</SelectItem>
+                        <SelectItem value="medium">medium</SelectItem>
+                        <SelectItem value="high">high</SelectItem>
+                        <SelectItem value="urgent">urgent</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="mt-1 font-medium text-primary">{ticket.priority}</p>
+                  )}
+                </div>
+
+                <div>
+                  <span className="text-sm text-primary/70">tags</span>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {ticketTags.map(tag => (
+                      <div 
+                        key={tag.id}
+                        className="flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-full text-sm"
+                      >
+                        {tag.name}
+                        {(profile?.role === 'manager' || (profile?.role === 'worker' && ticket.assigned_to === user?.id)) && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                await removeTag(tag.id)
+                              } catch (e) {
+                                console.error('Error removing tag:', e)
+                                setError('failed to remove tag')
+                              }
+                            }}
+                            className="text-primary/70 hover:text-primary"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    {(profile?.role === 'manager' || (profile?.role === 'worker' && ticket.assigned_to === user?.id)) && (
+                      <Popover open={tagSearchOpen} onOpenChange={setTagSearchOpen}>
+                        <PopoverTrigger asChild>
+                          <button className="flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-full text-sm hover:bg-primary/20">
+                            add tag
+                            <ChevronsUpDown className="h-3 w-3 opacity-50" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[300px] p-0 bg-background border border-primary" align="start">
+                          <Command className="w-full [&_[cmdk-input-wrapper]]:px-0">
+                            <CommandInput 
+                              placeholder="search tags..." 
+                              className="h-9 w-full ring-0 focus:ring-0 focus-visible:ring-0 text-primary placeholder:text-primary/50" 
+                              value={tagSearch} 
+                              onValueChange={setTagSearch}
+                              onKeyDown={async (e) => {
+                                if (e.key === 'Enter' && tagSearch) {
+                                  e.preventDefault()
+                                  if (filteredTags.length === 1) {
+                                    const tag = filteredTags[0]
+                                    try {
+                                      if (tag.id === 'create') {
+                                        const newTag = await createTag(tagSearch.trim())
+                                        if (newTag) {
+                                          await addTag(newTag.id)
+                                        }
+                                      } else {
+                                        await addTag(tag.id)
+                                      }
+                                      setTagSearchOpen(false)
+                                      setTagSearch('')
+                                    } catch (e) {
+                                      console.error('Error with tag:', e)
+                                      setError('failed to handle tag')
+                                    }
+                                  }
+                                }
+                              }}
+                            />
+                            <CommandEmpty className="py-2 px-3 text-sm text-primary/50">no tags found</CommandEmpty>
+                            <CommandGroup className="max-h-[200px] overflow-y-auto">
+                              {filteredTags.map(tag => (
+                                <CommandItem
+                                  key={tag.id}
+                                  onSelect={async () => {
+                                    try {
+                                      if (tag.id === 'create') {
+                                        const newTag = await createTag(tagSearch.trim())
+                                        if (newTag) {
+                                          await addTag(newTag.id)
+                                        }
+                                      } else {
+                                        await addTag(tag.id)
+                                      }
+                                      setTagSearchOpen(false)
+                                      setTagSearch('')
+                                    } catch (e) {
+                                      console.error('Error with tag:', e)
+                                      setError('failed to handle tag')
+                                    }
+                                  }}
+                                  className={tag.id === 'create' 
+                                    ? "py-2 px-3 cursor-pointer hover:bg-primary/10 text-primary"
+                                    : "py-2 px-3 cursor-pointer hover:bg-primary/10 text-primary"}
+                                >
+                                  {tag.id === 'create' ? `create "${tagSearch}"` : tag.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-sm text-primary/70">assignee</span>
+                  {profile?.role === 'manager' || (profile?.role === 'worker' && (!ticket.assigned_to || ticket.assigned_to === user?.id)) ? (
+                    <Select
+                      value={ticket.assigned_to || 'unassigned'}
+                      onValueChange={(value) => handleAssignmentChange(value === 'unassigned' ? null : value)}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">unassigned</SelectItem>
+                        {assignableMembers.map(member => (
+                          <SelectItem key={member.id} value={member.id}>
+                            {usernames[member.id] || member.username} ({member.role})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="mt-1 font-medium text-primary">
+                      {ticket.assigned_to ? usernames[ticket.assigned_to] || (ticket.assigned_to ? 'unknown' : 'ai assistant') : 'unassigned'}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {ticket.description && (
+                <div className="mt-6">
+                  <span className="text-sm text-primary/70">description</span>
+                  <FormattedText text={ticket.description} className="mt-1 text-primary whitespace-pre-wrap" />
+                </div>
+              )}
+
+              {isManager && (
+                <div className="mt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-medium text-primary">custom fields</h3>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          add field
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[300px] p-0" align="end">
+                        <Command className="w-full">
+                          <CommandInput 
+                            placeholder="search fields..." 
+                            className="h-9"
+                          />
+                          <CommandEmpty>no fields found</CommandEmpty>
+                          <CommandGroup className="max-h-[200px] overflow-y-auto">
+                            {allFields
+                              .filter(f => !fields.find(existing => existing.id === f.id))
+                              .map(field => (
+                                <CommandItem
+                                  key={field.id}
+                                  value={field.id}
+                                  onSelect={() => handleAddField(field.id)}
+                                >
+                                  <span>{field.name}</span>
+                                  <span className="ml-2 text-xs text-primary/50">
+                                    ({field.type}{field.required ? ", required" : ""})
+                                  </span>
+                                </CommandItem>
+                              ))}
+                          </CommandGroup>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+              )}
+
+              {fields.length > 0 && (
+                <div className="mt-4 space-y-4">
+                  {fields.map(field => (
+                    <div key={field.id} className="flex items-start gap-2">
+                      <CustomField
+                        field={field}
+                        value={values[field.id] || ''}
+                        onChange={(value: string) => handleFieldValueChange(field.id, value)}
+                        mode={
+                          profile?.role === 'customer' || 
+                          (profile?.role === 'worker' && ticket.assigned_to !== user?.id) ? 
+                          'view' : 'edit'
+                        }
+                        className="flex-1"
+                      />
+                      {isManager && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveField(field.id)}
+                        >
+                          remove
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-          <div className="space-y-4">
-            {timeline
-              .filter(item => 
-                'content' in item || // Show all comments
-                showEvents // Only show events if toggle is on
-              )
-              .map(item => (
-                <div 
-                  key={item.id} 
-                  className="border-b border-primary/20 last:border-0 pb-4"
-                >
-                  {'content' in item ? (
-                    <>
-                      <div className="flex justify-between items-start">
+
+            <div className="bg-background border border-primary shadow rounded-lg p-4">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold text-primary">comments</h2>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={showEvents}
+                    onCheckedChange={setShowEvents}
+                    id="show-events"
+                  />
+                  <label
+                    htmlFor="show-events"
+                    className="text-sm text-primary/70 cursor-pointer"
+                  >
+                    show status updates
+                  </label>
+                </div>
+              </div>
+              <div className="space-y-4">
+                {timeline
+                  .filter(item => 
+                    'content' in item || // Show all comments
+                    showEvents // Only show events if toggle is on
+                  )
+                  .map(item => (
+                    <div 
+                      key={item.id} 
+                      className="border-b border-primary/20 last:border-0 pb-4"
+                    >
+                      {'content' in item ? (
+                        <>
+                          <div className="flex justify-between items-start">
+                            <div className="text-sm text-primary/70">
+                              <span className="font-medium text-primary">
+                                {usernames[getTimelineItemUserId(item)] || (getTimelineItemUserId(item) ? 'unknown' : 'ai assistant')}
+                              </span>
+                              <span className="mx-2">·</span>
+                              <span>{new Date(item.created_at).toLocaleString()}</span>
+                              {'internal' in item && item.internal && (
+                                <>
+                                  <span className="mx-2">·</span>
+                                  <span className="text-yellow-500">internal</span>
+                                </>
+                              )}
+                            </div>
+                            {(profile?.role === 'manager' || (profile?.role === 'customer' && item.created_by === user?.id)) && (
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => handleDeleteComment(item.id)}
+                              >
+                                <TrashIcon className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                          <FormattedText text={item.content} className="mt-2 text-primary whitespace-pre-wrap" />
+                        </>
+                      ) : (
                         <div className="text-sm text-primary/70">
-                          <span className="font-medium text-primary">
-                            {usernames[getTimelineItemUserId(item)] || 'unknown'}
-                          </span>
+                          <span className="font-medium text-primary">{usernames[item.user_id] || (item.user_id ? 'unknown' : 'ai assistant')}</span>
                           <span className="mx-2">·</span>
                           <span>{new Date(item.created_at).toLocaleString()}</span>
-                          {'internal' in item && item.internal && (
+                          <span className="mx-2">·</span>
+                          {item.event_type === 'status' && (
+                            <>status changed from <span className="text-primary">{item.old_value || 'none'}</span> to <span className="text-primary">{item.new_value}</span></>
+                          )}
+                          {item.event_type === 'priority' && (
+                            <>priority changed from <span className="text-primary">{item.old_value || 'none'}</span> to <span className="text-primary">{item.new_value}</span></>
+                          )}
+                          {item.event_type === 'assignment' && (
                             <>
-                              <span className="mx-2">·</span>
-                              <span className="text-yellow-500">internal</span>
+                              {item.new_value ? (
+                                <>assigned to <span className="text-primary">{usernames[item.new_value] || 'unknown'}</span></>
+                              ) : (
+                                <>unassigned from <span className="text-primary">{usernames[item.old_value || ''] || 'unknown'}</span></>
+                              )}
                             </>
                           )}
                         </div>
-                        {(profile?.role === 'manager' || (profile?.role === 'customer' && item.created_by === user?.id)) && (
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => handleDeleteComment(item.id)}
-                          >
-                            <TrashIcon className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                      <FormattedText text={item.content} className="mt-2 text-primary whitespace-pre-wrap" />
-                    </>
-                  ) : (
-                    <div className="text-sm text-primary/70">
-                      <span className="font-medium text-primary">{usernames[item.user_id] || 'unknown'}</span>
-                      <span className="mx-2">·</span>
-                      <span>{new Date(item.created_at).toLocaleString()}</span>
-                      <span className="mx-2">·</span>
-                      {item.event_type === 'status' && (
-                        <>status changed from <span className="text-primary">{item.old_value || 'none'}</span> to <span className="text-primary">{item.new_value}</span></>
-                      )}
-                      {item.event_type === 'priority' && (
-                        <>priority changed from <span className="text-primary">{item.old_value || 'none'}</span> to <span className="text-primary">{item.new_value}</span></>
-                      )}
-                      {item.event_type === 'assignment' && (
-                        <>
-                          {item.new_value ? (
-                            <>assigned to <span className="text-primary">{usernames[item.new_value] || 'unknown'}</span></>
-                          ) : (
-                            <>unassigned from <span className="text-primary">{usernames[item.old_value || ''] || 'unknown'}</span></>
-                          )}
-                        </>
                       )}
                     </div>
-                  )}
-                </div>
-              ))}
-          </div>
-
-          <div className="mt-6 pt-4 border-t border-primary/20">
-            <h3 className="text-sm font-medium text-primary mb-4">add comment</h3>
-            <form onSubmit={handleSubmitComment} className="space-y-4">
-              <div>
-                <Textarea 
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="write your comment..."
-                  className="w-full"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && e.shiftKey && newComment.trim()) {
-                      e.preventDefault()
-                      handleSubmitComment(e)
-                    }
-                  }}
-                />
+                  ))}
               </div>
-              {isManagerOrWorker && (
-                <div className="flex items-center gap-2">
-                  <Switch
-                    id="internal"
-                    checked={isInternal}
-                    onCheckedChange={setIsInternal}
-                  />
-                  <Label htmlFor="internal" className="text-primary">internal comment</Label>
-                </div>
-              )}
-              <Button type="submit" disabled={!newComment.trim() || updatingComment}>
-                add comment
-              </Button>
-            </form>
+
+              <div className="mt-6 pt-4 border-t border-primary/20">
+                <h3 className="text-sm font-medium text-primary mb-4">add comment</h3>
+                <form onSubmit={handleSubmitComment} className="space-y-4">
+                  <div>
+                    <Textarea 
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="write your comment..."
+                      className="w-full"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && e.shiftKey && newComment.trim()) {
+                          e.preventDefault()
+                          handleSubmitComment(e)
+                        }
+                      }}
+                    />
+                  </div>
+                  {isManagerOrWorker && (
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="internal"
+                        checked={isInternal}
+                        onCheckedChange={setIsInternal}
+                      />
+                      <Label htmlFor="internal" className="text-primary">internal comment</Label>
+                    </div>
+                  )}
+                  <Button type="submit" disabled={!newComment.trim() || updatingComment}>
+                    add comment
+                  </Button>
+                </form>
+              </div>
+            </div>
           </div>
+        </div>
+        
+        <div>
+          {/* Similar Tickets */}
+          {isManagerOrWorker && (
+            <div className="bg-background border border-primary shadow rounded-lg p-4">
+              <h3 className="font-medium text-primary mb-2">similar tickets</h3>
+              <SimilarTickets ticketId={id!} />
+            </div>
+          )}
         </div>
       </div>
     </div>

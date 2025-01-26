@@ -13,26 +13,49 @@ begin
     return NEW;
   end if;
 
-  -- Notify ticket creator if comment is by someone else
-  if ticket_record.created_by != NEW.created_by then
+  -- For AI comments (created_by is null), notify both creator and assignee
+  if NEW.created_by is null then
+    -- Notify ticket creator
     insert into notifications (user_id, type, title, link)
     values (
       ticket_record.created_by,
       'comment_added',
-      'new comment on your ticket "' || ticket_record.title || '"',
+      'ai assistant commented on your ticket "' || ticket_record.title || '"',
       '/tickets/' || NEW.ticket_id
     );
-  end if;
 
-  -- Notify assigned worker if comment is by someone else
-  if ticket_record.assigned_to is not null and ticket_record.assigned_to != NEW.created_by then
-    insert into notifications (user_id, type, title, link)
-    values (
-      ticket_record.assigned_to,
-      'comment_added',
-      'new comment on ticket "' || ticket_record.title || '"',
-      '/tickets/' || NEW.ticket_id
-    );
+    -- Notify assigned worker if exists
+    if ticket_record.assigned_to is not null then
+      insert into notifications (user_id, type, title, link)
+      values (
+        ticket_record.assigned_to,
+        'comment_added',
+        'ai assistant commented on ticket "' || ticket_record.title || '"',
+        '/tickets/' || NEW.ticket_id
+      );
+    end if;
+  else
+    -- Notify ticket creator if comment is by someone else
+    if ticket_record.created_by != NEW.created_by then
+      insert into notifications (user_id, type, title, link)
+      values (
+        ticket_record.created_by,
+        'comment_added',
+        'new comment on your ticket "' || ticket_record.title || '"',
+        '/tickets/' || NEW.ticket_id
+      );
+    end if;
+
+    -- Notify assigned worker if comment is by someone else
+    if ticket_record.assigned_to is not null and ticket_record.assigned_to != NEW.created_by then
+      insert into notifications (user_id, type, title, link)
+      values (
+        ticket_record.assigned_to,
+        'comment_added',
+        'new comment on ticket "' || ticket_record.title || '"',
+        '/tickets/' || NEW.ticket_id
+      );
+    end if;
   end if;
 
   return NEW;

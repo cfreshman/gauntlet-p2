@@ -48,6 +48,13 @@ if [ -z "$OPENAI_API_KEY" ]; then
     exit 1
 fi
 
+# Extract APP_HOSTNAME
+APP_HOSTNAME=$(grep APP_HOSTNAME $ENV_FILE | cut -d '=' -f2)
+if [ -z "$APP_HOSTNAME" ]; then
+    echo "Error: APP_HOSTNAME not found in $ENV_FILE"
+    exit 1
+fi
+
 # Extract project ref from URL (assumes format: https://<project-ref>.supabase.co)
 PROJECT_REF=$(echo $PLATFORM_URL | sed -E 's/https:\/\/([^.]+).supabase.co/\1/')
 if [ -z "$PROJECT_REF" ]; then
@@ -57,7 +64,7 @@ fi
 
 # Set environment variables
 echo "Setting environment variables..."
-supabase secrets set --project-ref $PROJECT_REF PLATFORM_URL=$PLATFORM_URL PLATFORM_KEY=$PLATFORM_KEY OPENAI_API_KEY=$OPENAI_API_KEY
+supabase secrets set --project-ref $PROJECT_REF PLATFORM_URL=$PLATFORM_URL PLATFORM_KEY=$PLATFORM_KEY OPENAI_API_KEY=$OPENAI_API_KEY APP_HOSTNAME=$APP_HOSTNAME
 
 # Deploy all functions
 supabase functions deploy create-ticket --project-ref $PROJECT_REF
@@ -79,5 +86,6 @@ supabase functions deploy update-kb-embedding --project-ref $PROJECT_REF
 supabase functions deploy search-kb --project-ref $PROJECT_REF
 supabase functions deploy generate-ticket-embedding --project-ref $PROJECT_REF
 supabase functions deploy search-similar-tickets --project-ref $PROJECT_REF
+supabase functions deploy auto-process-ticket --project-ref $PROJECT_REF
 
 echo "All functions deployed to $1 project: $PROJECT_REF" 

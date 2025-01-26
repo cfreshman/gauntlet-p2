@@ -40,28 +40,29 @@ serve(async (req) => {
     if (!title) throw new Error('title required')
 
     // Create ticket
-    const { data: ticket, error: ticketError } = await supabase
+    const { data: ticket, error: insertError } = await supabase
       .from('tickets')
       .insert({
         title,
         description,
         priority: priority ?? 'medium',
         team_id,
-        created_by: user.id
+        created_by: user.id,
+        status: 'new'
       })
-      .select()
+      .select('*')
       .single()
 
-    if (ticketError) {
-      console.error('Error creating ticket:', ticketError)
-      throw ticketError
-    }
-    console.log('Created ticket:', ticket)
+    if (insertError) throw insertError
 
-    // Generate embedding
-    await supabase.functions.invoke('generate-ticket-embedding', {
+    // Fire and forget embedding and auto-processing
+    supabase.functions.invoke('generate-ticket-embedding', {
       body: { ticket_id: ticket.id }
     }).catch(err => console.error('Error generating embedding:', err))
+
+    supabase.functions.invoke('auto-process-ticket', {
+      body: { ticket_id: ticket.id }
+    }).catch(err => console.error('Error auto-processing ticket:', err))
 
     // Add required skills if provided
     if (required_skills?.length) {
@@ -81,15 +82,13 @@ serve(async (req) => {
 
     // Add field values if provided
     if (field_values && Object.keys(field_values).length > 0) {
-      console.log('Attempting to add field values:', field_values)
       const fieldValueRows = Object.entries(field_values).map(([field_id, value]) => ({
         ticket_id: ticket.id,
         field_id,
         value
       }))
-      console.log('Prepared field value rows:', fieldValueRows)
 
-      const { data: insertedValues, error: fieldsError } = await supabase
+      const { error: fieldsError } = await supabase
         .from('ticket_field_values')
         .insert(fieldValueRows)
         .select()
@@ -98,9 +97,6 @@ serve(async (req) => {
         console.error('Error adding field values:', fieldsError)
         throw fieldsError
       }
-      console.log('Successfully inserted field values:', insertedValues)
-    } else {
-      console.log('No field values to add')
     }
 
     // Add tags if provided
@@ -118,7 +114,7 @@ serve(async (req) => {
         throw tagsError
       }
     }
-    
+
     return new Response(
       JSON.stringify({ ticket }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

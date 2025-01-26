@@ -44,12 +44,11 @@ export default function KnowledgeBase() {
       if (articleError) throw articleError;
 
       // Get article content
-      const { data, error: storageError } = await supabase.storage
+      const { data, error: downloadError } = await supabase.storage
         .from("kb")
         .download(`${articleId}.md`);
 
-      if (storageError) throw storageError;
-
+      if (downloadError) throw downloadError;
       const content = await data.text();
 
       setSelectedArticle({

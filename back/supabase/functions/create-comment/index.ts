@@ -19,30 +19,36 @@ serve(async (req) => {
       Deno.env.get('PLATFORM_KEY') ?? ''
     )
 
-    const authHeader = req.headers.get('Authorization')?.split(' ')[1]
-    if (!authHeader) throw new Error('no auth header')
+    // Check if this is a peer function call by checking peer_key header
+    const isServiceRole = req.headers.get('peer_key') === Deno.env.get('PLATFORM_KEY')
     
-    const { data: { user }, error: userError } = await supabase.auth.getUser(authHeader)
-    if (userError || !user) throw new Error('invalid auth')
+    // Only check user auth for non-service role calls
+    let user
+    if (!isServiceRole) {
+      const authHeader = req.headers.get('Authorization')?.split(' ')[1]
+      if (!authHeader) throw new Error('no auth header')
+      
+      const { data: { user: authUser }, error: userError } = await supabase.auth.getUser(authHeader)
+      if (userError || !authUser) throw new Error('invalid auth')
+      user = authUser
+    }
 
-    const { ticket_id, content, internal } = await req.json() as CreateCommentPayload
-
-    if (!ticket_id) throw new Error('ticket id required')
-    if (!content) throw new Error('content required')
+    const { ticket_id, content, internal } = await req.json()
+    if (!ticket_id || !content) throw new Error('ticket_id and content required')
 
     // Create comment
-    const { data: comment, error: commentError } = await supabase
+    const { data: comment, error: insertError } = await supabase
       .from('ticket_comments')
       .insert({
         ticket_id,
         content,
-        internal: internal || false,
-        created_by: user.id
+        internal: internal ?? false,
+        created_by: isServiceRole ? null : user.id
       })
       .select()
       .single()
 
-    if (commentError) throw commentError
+    if (insertError) throw insertError
 
     // Update ticket embedding - don't block on errors
     try {

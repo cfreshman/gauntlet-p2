@@ -27,24 +27,38 @@ serve(async (req) => {
       Deno.env.get('PLATFORM_KEY') ?? ''
     )
 
-    const authHeader = req.headers.get('Authorization')?.split(' ')[1]
-    if (!authHeader) throw new Error('no auth header')
+    // Check if this is a peer function call by checking peer_key header
+    const isServiceRole = req.headers.get('peer_key') === Deno.env.get('PLATFORM_KEY')
+    console.log('isServiceRole:', isServiceRole)
     
-    const { data: { user }, error: userError } = await supabase.auth.getUser(authHeader)
-    if (userError || !user) throw new Error('invalid auth')
+    // Only check user auth for non-service role calls
+    let user
+    if (!isServiceRole) {
+      const authHeader = req.headers.get('Authorization')?.split(' ')[1]
+      if (!authHeader) throw new Error('no auth header')
+      
+      const { data: { user: authUser }, error: userError } = await supabase.auth.getUser(authHeader)
+      if (userError || !authUser) throw new Error('invalid auth')
+      user = authUser
+    }
 
     const { id, title, description, status, priority, team_id, assigned_to, restricted, required_skills, field_values, tags } = await req.json() as UpdateTicketPayload
 
     if (!id) throw new Error('ticket id required')
 
-    // Get user role and check if they're the creator
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-    
-    if (profileError) throw profileError
+    // Skip permission checks for service role
+    let profile
+    if (!isServiceRole) {
+      // Get user role and check if they're the creator
+      const { data: userProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+      
+      if (profileError) throw profileError
+      profile = userProfile
+    }
 
     // Get current ticket to check permissions
     const { data: currentTicket, error: ticketError } = await supabase
@@ -64,7 +78,7 @@ serve(async (req) => {
 
     // If worker is trying to assign to someone else, verify it's a manager
     let assigningToManager = false
-    if (profile.role === 'worker' && assigned_to && assigned_to !== user.id) {
+    if (!isServiceRole && profile.role === 'worker' && assigned_to && assigned_to !== user.id) {
       const { data: targetUser, error: targetError } = await supabase
         .from('profiles')
         .select('role')
@@ -91,7 +105,16 @@ serve(async (req) => {
     // Build update object based on permissions
     const updateData: any = {}
     
-    if (profile.role === 'manager') {
+    if (isServiceRole) {
+      // Service role can update everything
+      updateData.title = title
+      updateData.description = description
+      updateData.status = status
+      updateData.priority = priority
+      updateData.team_id = newTeamId
+      updateData.assigned_to = assigned_to
+      updateData.restricted = restricted
+    } else if (profile.role === 'manager') {
       // Managers can update everything
       updateData.title = title
       updateData.description = description
@@ -141,7 +164,7 @@ serve(async (req) => {
         .from('ticket_events')
         .insert({
           ticket_id: id,
-          user_id: user.id,
+          user_id: isServiceRole ? null : user.id,
           event_type: 'status',
           old_value: currentTicket.status,
           new_value: updateData.status
@@ -153,7 +176,7 @@ serve(async (req) => {
         .from('ticket_events')
         .insert({
           ticket_id: id,
-          user_id: user.id,
+          user_id: isServiceRole ? null : user.id,
           event_type: 'assignment',
           old_value: currentTicket.assigned_to || 'unassigned',
           new_value: updateData.assigned_to || 'unassigned'
@@ -165,15 +188,15 @@ serve(async (req) => {
         .from('ticket_events')
         .insert({
           ticket_id: id,
-          user_id: user.id,
+          user_id: isServiceRole ? null : user.id,
           event_type: 'priority',
           old_value: currentTicket.priority,
           new_value: updateData.priority
         })
     }
 
-    // Create notification if someone else assigned the ticket
-    if (assigned_to && assigned_to !== user.id) {
+    // Create notification when ticket is assigned
+    if (assigned_to && (!user || assigned_to !== user.id)) {
       await supabase
         .from('notifications')
         .insert({

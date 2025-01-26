@@ -947,7 +947,7 @@ create trigger set_ticket_feedback_created_by
 create table ticket_events (
   id uuid primary key default uuid_generate_v4(),
   ticket_id uuid references tickets on delete cascade not null,
-  user_id uuid references auth.users not null,
+  user_id uuid references auth.users,
   event_type text not null check (event_type in ('status', 'assignment', 'priority')),
   old_value text,
   new_value text,
