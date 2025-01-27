@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import OpenAI from 'https://esm.sh/openai@4.24.1'
+import Langfuse from 'npm:langfuse'
 import { corsHeaders } from '../_shared/cors.ts'
 
 type Action = 
@@ -57,6 +58,11 @@ serve(async (req) => {
     )
     const openai = new OpenAI({
       apiKey: Deno.env.get('OPENAI_API_KEY')
+    })
+    const langfuse = new Langfuse({
+      publicKey: Deno.env.get('LANGFUSE_PUBLIC_KEY') ?? '',
+      secretKey: Deno.env.get('LANGFUSE_SECRET_KEY') ?? '',
+      baseUrl: Deno.env.get('LANGFUSE_HOST') ?? 'https://cloud.langfuse.com'
     })
 
     // Get ticket data
@@ -122,6 +128,27 @@ serve(async (req) => {
         }
       })
     )
+
+    // Create trace now that we have all the initial data
+    const trace = langfuse.trace({
+      id: `ticket-${ticket_id}`,
+      name: 'auto-process-ticket',
+      input: {
+        ticket: {
+          id: ticket_id,
+          title: ticket.title,
+          description: ticket.description,
+          priority: ticket.priority,
+          tags: ticket.ticket_tag_links?.map((link: any) => link.ticket_tags.name) || []
+        },
+        matchedArticles: articles.map(a => ({
+          id: a.id,
+          title: a.title,
+          similarity: Math.round(a.similarity * 100),
+          isPublished: Boolean(a.published)
+        }))
+      }
+    })
 
     // Get team and staff data
     const [teamsData, teamMembershipsData, staffData, staffSkillsData] = await Promise.all([
@@ -294,7 +321,25 @@ Skills: ${skills.length ? skills.join(', ') : 'none'}`
       response = { actions: [] }
     }
 
+    // Log prompt and completion
+    const generation = trace.generation({
+      name: 'process-ticket',
+      model: 'gpt-4o-mini',
+      modelParameters: {
+        temperature: 0,
+        response_format: { type: "json_object" }
+      },
+      prompt: [prompt, userMessage],
+      completion: completion.choices[0].message.content
+    })
+    generation.end()
+
     // Execute actions
+    const execution = trace.span({
+      name: 'execute-actions',
+      input: response
+    })
+
     for (const action of response.actions) {
       switch (action.type) {
         case 'set_status':
@@ -365,6 +410,40 @@ Skills: ${skills.length ? skills.join(', ') : 'none'}`
           break
       }
     }
+
+    execution.end()
+    await trace.update({ 
+      status: 'success',
+      output: {
+        actions: response.actions,
+        summary: {
+          wasAutoResolved: response.actions.some(a => a.type === 'set_status' && a.status === 'resolved'),
+          assignedTeam: response.actions.find(a => a.type === 'set_assignee')?.team_id,
+          assignedStaff: response.actions.find(a => a.type === 'set_assignee')?.staff_id,
+          numComments: response.actions.filter(a => a.type === 'add_comment').length,
+          referencedArticles: response.actions
+            .filter(a => a.type === 'add_comment')
+            .flatMap(a => a.references || [])
+            .filter(r => r.type === 'article')
+            .map(r => r.id)
+        },
+        llmUsage: completion.usage
+      }
+    })
+    try {
+      await langfuse.flush()
+      await langfuse.shutdownAsync()
+    } catch (e) {
+      console.error('Langfuse error:', e)
+    }
+
+    // Add debug logging
+    console.log('Langfuse trace completed:', {
+      traceId: `ticket-${ticket_id}`,
+      publicKey: Deno.env.get('LANGFUSE_PUBLIC_KEY')?.slice(0,8) + '...',
+      host: Deno.env.get('LANGFUSE_HOST'),
+      timestamp: new Date().toISOString()
+    })
 
     return new Response(JSON.stringify(response), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

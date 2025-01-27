@@ -55,6 +55,25 @@ if [ -z "$APP_HOSTNAME" ]; then
     exit 1
 fi
 
+# Extract LangFuse variables
+LANGFUSE_PUBLIC_KEY=$(grep LANGFUSE_PUBLIC_KEY $ENV_FILE | cut -d '=' -f2)
+if [ -z "$LANGFUSE_PUBLIC_KEY" ]; then
+    echo "Error: LANGFUSE_PUBLIC_KEY not found in $ENV_FILE"
+    exit 1
+fi
+
+LANGFUSE_SECRET_KEY=$(grep LANGFUSE_SECRET_KEY $ENV_FILE | cut -d '=' -f2)
+if [ -z "$LANGFUSE_SECRET_KEY" ]; then
+    echo "Error: LANGFUSE_SECRET_KEY not found in $ENV_FILE"
+    exit 1
+fi
+
+LANGFUSE_HOST=$(grep LANGFUSE_HOST $ENV_FILE | cut -d '=' -f2)
+if [ -z "$LANGFUSE_HOST" ]; then
+    echo "Error: LANGFUSE_HOST not found in $ENV_FILE"
+    exit 1
+fi
+
 # Extract project ref from URL (assumes format: https://<project-ref>.supabase.co)
 PROJECT_REF=$(echo $PLATFORM_URL | sed -E 's/https:\/\/([^.]+).supabase.co/\1/')
 if [ -z "$PROJECT_REF" ]; then
@@ -64,7 +83,14 @@ fi
 
 # Set environment variables
 echo "Setting environment variables..."
-supabase secrets set --project-ref $PROJECT_REF PLATFORM_URL=$PLATFORM_URL PLATFORM_KEY=$PLATFORM_KEY OPENAI_API_KEY=$OPENAI_API_KEY APP_HOSTNAME=$APP_HOSTNAME
+supabase secrets set --project-ref $PROJECT_REF \
+  PLATFORM_URL=$PLATFORM_URL \
+  PLATFORM_KEY=$PLATFORM_KEY \
+  OPENAI_API_KEY=$OPENAI_API_KEY \
+  APP_HOSTNAME=$APP_HOSTNAME \
+  LANGFUSE_PUBLIC_KEY=$LANGFUSE_PUBLIC_KEY \
+  LANGFUSE_SECRET_KEY=$LANGFUSE_SECRET_KEY \
+  LANGFUSE_HOST=$LANGFUSE_HOST
 
 # Deploy all functions
 supabase functions deploy create-ticket --project-ref $PROJECT_REF
