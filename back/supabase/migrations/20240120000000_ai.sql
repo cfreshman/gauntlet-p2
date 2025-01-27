@@ -19,7 +19,7 @@ WITH (m = 16, ef_construction = 64);
 -- Ticket embeddings for historical matching
 CREATE TABLE ticket_embeddings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  ticket_id uuid REFERENCES tickets(id) ON DELETE CASCADE,
+  ticket_id uuid REFERENCES tickets(id) ON DELETE CASCADE UNIQUE,
   embedding vector(1536),
   metadata jsonb, -- Store resolution info, skills used, etc.
   created_at timestamptz DEFAULT now()
@@ -59,6 +59,15 @@ CREATE POLICY "Anyone can read ticket_embeddings"
 CREATE POLICY "System can insert ticket_embeddings"
   ON ticket_embeddings FOR INSERT
   WITH CHECK (true);
+
+CREATE POLICY "System can update ticket_embeddings"
+  ON ticket_embeddings FOR UPDATE
+  USING (true)
+  WITH CHECK (true);
+
+CREATE POLICY "System can delete ticket_embeddings"
+  ON ticket_embeddings FOR DELETE
+  USING (true);
 
 -- Search function for KB articles
 CREATE OR REPLACE FUNCTION search_kb_articles(
@@ -144,5 +153,25 @@ BEGIN
     AND 1 - (e.embedding <-> query_embedding) > match_threshold
   ORDER BY e.embedding <-> query_embedding
   LIMIT match_count;
+END;
+$$;
+
+-- Add upsert function for ticket embeddings
+CREATE OR REPLACE FUNCTION upsert_ticket_embedding(
+  p_ticket_id uuid,
+  p_embedding vector(1536),
+  p_metadata jsonb DEFAULT NULL
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  INSERT INTO ticket_embeddings (ticket_id, embedding, metadata)
+  VALUES (p_ticket_id, p_embedding, p_metadata)
+  ON CONFLICT (ticket_id) DO UPDATE SET
+    embedding = EXCLUDED.embedding,
+    metadata = EXCLUDED.metadata,
+    created_at = now();
 END;
 $$; 

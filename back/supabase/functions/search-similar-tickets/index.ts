@@ -128,10 +128,19 @@ serve(async (req) => {
       throw searchError
     }
 
-    console.log('Search results:', results)
+    // Deduplicate results by ticket ID
+    const uniqueResults = new Map()
+    results.forEach((result) => {
+      const existing = uniqueResults.get(result.id)
+      if (!existing || result.similarity > existing.similarity) {
+        uniqueResults.set(result.id, result)
+      }
+    })
+
+    console.log('Search results:', Array.from(uniqueResults.values()))
 
     return new Response(
-      JSON.stringify({ tickets: results }),
+      JSON.stringify({ tickets: Array.from(uniqueResults.values()) }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 

@@ -154,21 +154,25 @@ export function Dashboard() {
           const unclaimedTeamTickets = activeTickets.filter(t => t.assigned_to === null)
           const noTeamTickets = data.filter(t => t.team_id === null)
           const activeNoTeamTickets = noTeamTickets.filter(t => t.status !== 'closed')
+          const myTickets = activeTickets.filter(t => t.assigned_to === profile.id)
 
           setCounts({
             total: activeTickets.length,
-            new: activeTickets.filter(t => t.status === 'new').length,
-            new_assigned: activeTickets.filter(t => t.status === 'new' && t.assigned_to === profile.id).length,
-            open: activeTickets.filter(t => t.status === 'open').length,
-            pending: activeTickets.filter(t => t.status === 'pending').length,
-            resolved: relevantTickets.filter(t => t.status === 'resolved').length,
-            recently_closed: relevantTickets.filter(t => 
+            new: profile.role === 'manager' ? activeTickets.filter(t => t.status === 'new').length : myTickets.filter(t => t.status === 'new').length,
+            new_assigned: myTickets.filter(t => t.status === 'new').length,
+            open: profile.role === 'manager' ? activeTickets.filter(t => t.status === 'open').length : myTickets.filter(t => t.status === 'open').length,
+            pending: profile.role === 'manager' ? activeTickets.filter(t => t.status === 'pending').length : myTickets.filter(t => t.status === 'pending').length,
+            resolved: profile.role === 'manager' ? relevantTickets.filter(t => t.status === 'resolved').length : myTickets.filter(t => t.status === 'resolved').length,
+            recently_closed: profile.role === 'manager' ? relevantTickets.filter(t => 
+              t.status === 'closed' && 
+              new Date(t.updated_at) >= sevenDaysAgo
+            ).length : myTickets.filter(t => 
               t.status === 'closed' && 
               new Date(t.updated_at) >= sevenDaysAgo
             ).length,
-            urgent: activeTickets.filter(t => t.priority === 'urgent').length,
-            high: activeTickets.filter(t => t.priority === 'high').length,
-            assigned: activeTickets.filter(t => t.assigned_to !== null).length,
+            urgent: profile.role === 'manager' ? activeTickets.filter(t => t.priority === 'urgent').length : myTickets.filter(t => t.priority === 'urgent').length,
+            high: profile.role === 'manager' ? activeTickets.filter(t => t.priority === 'high').length : myTickets.filter(t => t.priority === 'high').length,
+            assigned: myTickets.length,
             unassigned: profile.role === 'manager' ? activeNoTeamTickets.length : unclaimedTeamTickets.length
           })
         }

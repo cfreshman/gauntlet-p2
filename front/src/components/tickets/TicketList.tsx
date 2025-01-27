@@ -65,6 +65,7 @@ export function TicketList() {
   const [searchResults, setSearchResults] = useState<null | Array<{
     id: string
     similarity: number
+    ticket: TicketWithProfile
   }>>(null)
 
   // Restore filters from storage if URL is empty
@@ -223,7 +224,48 @@ export function TicketList() {
       })
 
       if (error) throw error
-      setSearchResults(data.tickets)
+
+      // Load full ticket data for each search result
+      const ticketIds = data.tickets.map((t: { id: string }) => t.id)
+      const { data: tickets } = await supabase
+        .from('tickets')
+        .select(`
+          *,
+          feedback:ticket_feedback (
+            rating
+          ),
+          ticket_tag_links (
+            ticket_tags (
+              id,
+              name
+            )
+          )
+        `)
+        .in('id', ticketIds)
+        .not('title', 'like', 'template:%')
+
+      if (tickets) {
+        // Create a Map to ensure unique tickets by ID
+        const uniqueResults = new Map<string, { id: string; similarity: number; ticket: TicketWithProfile }>()
+        
+        // Keep only the highest similarity match for each ticket
+        data.tickets.forEach((result: { id: string; similarity: number }) => {
+          const ticket = tickets.find((t: TicketWithProfile) => t.id === result.id)
+          if (!ticket) return
+          
+          const existing = uniqueResults.get(result.id)
+          if (!existing || result.similarity > existing.similarity) {
+            uniqueResults.set(result.id, { id: result.id, similarity: result.similarity, ticket })
+          }
+        })
+
+        const fullResults = Array.from(uniqueResults.values())
+        setSearchResults(fullResults)
+        setTickets(fullResults.map((r: { ticket: TicketWithProfile }) => r.ticket))
+      } else {
+        setSearchResults([])
+        setTickets([])
+      }
     } catch (err) {
       console.error('Error searching tickets:', err)
       setError('Failed to search tickets')
@@ -238,39 +280,15 @@ export function TicketList() {
       setLoading(true)
       setError('')
 
-      // If we have search results, only load those tickets
+      // If we have search results, use those tickets directly and skip other loading
       if (searchResults) {
-        const ticketIds = searchResults.map(r => r.id)
-        let query = supabase
-          .from('tickets')
-          .select(`
-            *,
-            feedback:ticket_feedback (
-              rating
-            ),
-            ticket_tag_links!${tagFilter !== 'all' ? 'inner' : 'left'} (
-              ticket_tags (
-                id,
-                name
-              )
-            )
-          `)
-          .in('id', ticketIds)
-
-        const { data, error } = await query
-        if (error) throw error
-
-        // Sort by similarity score
-        const sortedData = data.sort((a, b) => {
-          const aScore = searchResults.find(r => r.id === a.id)?.similarity ?? 0
-          const bScore = searchResults.find(r => r.id === b.id)?.similarity ?? 0
-          return bScore - aScore
-        })
-
-        setTickets(sortedData)
+        const searchTickets = searchResults.map(r => r.ticket)
+        setTickets(searchTickets)
+        setLoading(false)
         return
       }
 
+      // Regular ticket loading with filters
       let query = supabase
         .from('tickets')
         .select(`
@@ -398,7 +416,9 @@ export function TicketList() {
 
   // Add effect to reload tickets when search results change
   useEffect(() => {
-    loadTickets()
+    if (searchResults === null && !searchQuery.trim()) {
+      loadTickets()
+    }
   }, [searchResults])
 
   // Add debounced search
@@ -406,7 +426,7 @@ export function TicketList() {
     const timer = setTimeout(() => {
       if (searchQuery.trim()) {
         handleSearch()
-      } else {
+      } else if (searchResults !== null) {
         setSearchResults(null)
       }
     }, 300)
@@ -415,14 +435,6 @@ export function TicketList() {
   }, [searchQuery])
 
   // Update the render logic to handle both loading states
-  if (loading && !searchResults) return (
-    <div className="max-w-5xl mx-auto px-4 py-6">
-      <div className="flex items-center justify-center h-32 text-primary/70">
-        loading tickets...
-      </div>
-    </div>
-  )
-
   if (error) return (
     <div className="max-w-5xl mx-auto px-4 py-6">
       <div className="flex items-center justify-center h-32 text-red-500">
@@ -431,16 +443,19 @@ export function TicketList() {
     </div>
   )
 
+  const isSearching = Boolean(searchQuery.trim())
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-6">
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-bold text-primary">
-            {profile?.role === 'customer' && (statusFilter !== 'all' || (searchParams.toString() !== '' && searchParams.toString() !== 'view=tickets'))
-              ? 'filtered tickets'
-              : viewMode === 'templates' ? 'templates' : 'tickets'}
+            {isSearching ? 'search results' :
+              profile?.role === 'customer' && (statusFilter !== 'all' || (searchParams.toString() !== '' && searchParams.toString() !== 'view=tickets'))
+                ? 'filtered tickets'
+                : viewMode === 'templates' ? 'templates' : 'tickets'}
           </h1>
-          {profile?.role !== 'customer' && (
+          {!isSearching && profile?.role !== 'customer' && (
             <>
               {assignedId ? (
                 <span className="text-2xl text-primary/90">
@@ -470,202 +485,208 @@ export function TicketList() {
             </>
           )}
         </div>
-        <div className="flex gap-2">
-          {profile?.role !== 'customer' && (
-            <Link to={`/tickets?${new URLSearchParams({
-              ...Object.fromEntries(searchParams),
-              view: viewMode === 'templates' ? 'tickets' : 'templates'
-            })}`}>
-              <Button variant="outline">
-                view {viewMode === 'templates' ? 'tickets' : 'templates'}
-              </Button>
-            </Link>
-          )}
-          <Link to="/tickets/new">
-            <Button>new ticket</Button>
-          </Link>
-        </div>
-      </div>
-
-      <div className="mb-4">
-        <Input
-          type="text"
-          placeholder="search tickets by title, description, comments"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-      </div>
-
-      {!searchQuery && profile?.role !== 'customer' && (
-        <div className="flex gap-4 mb-4">
-          <div>
-            <label className="block text-sm text-primary/70 mb-1">status</label>
-            <Select 
-              value={statusFilter} 
-              onValueChange={(value) => updateParams({ status: value === 'all' ? null : value })}
-            >
-              <SelectTrigger className="w-[120px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">all</SelectItem>
-                <SelectItem value="active">active</SelectItem>
-                <SelectItem value="incomplete">incomplete</SelectItem>
-                <SelectItem value="completed">completed</SelectItem>
-                <SelectItem value="new">new</SelectItem>
-                <SelectItem value="open">open</SelectItem>
-                <SelectItem value="pending">pending</SelectItem>
-                <SelectItem value="resolved">resolved</SelectItem>
-                <SelectItem value="closed">closed</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <label className="block text-sm text-primary/70 mb-1">priority</label>
-            <Select 
-              value={priorityFilter} 
-              onValueChange={(value) => updateParams({ priority: value === 'all' ? null : value })}
-            >
-              <SelectTrigger className="w-[120px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">all</SelectItem>
-                <SelectItem value="low">low</SelectItem>
-                <SelectItem value="medium">medium</SelectItem>
-                <SelectItem value="high">high</SelectItem>
-                <SelectItem value="urgent">urgent</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <label className="block text-sm text-primary/70 mb-1">tag</label>
-            <Popover open={tagSearchOpen} onOpenChange={setTagSearchOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={tagSearchOpen}
-                  className="w-[120px] justify-between"
-                >
-                  {tagFilter === 'all' 
-                    ? 'all'
-                    : usedTags.find(t => t.id === tagFilter)?.name || 'select...'}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        {!isSearching && (
+          <div className="flex gap-2">
+            {profile?.role !== 'customer' && (
+              <Link to={`/tickets?${new URLSearchParams({
+                ...Object.fromEntries(searchParams),
+                view: viewMode === 'templates' ? 'tickets' : 'templates'
+              })}`}>
+                <Button variant="outline">
+                  view {viewMode === 'templates' ? 'tickets' : 'templates'}
                 </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[200px] p-0" align="start">
-                <Command>
-                  <CommandInput 
-                    placeholder="search tags..." 
-                    value={tagSearch}
-                    onValueChange={setTagSearch}
-                  />
-                  <CommandEmpty>no tags found</CommandEmpty>
-                  <CommandGroup className="max-h-[200px] overflow-y-auto">
-                    <CommandItem
-                      value="all"
-                      onSelect={() => {
-                        updateParams({ tag: null })
-                        setTagSearchOpen(false)
-                        setTagSearch('')
-                      }}
+              </Link>
+            )}
+            <Link to="/tickets/new">
+              <Button>new ticket</Button>
+            </Link>
+          </div>
+        )}
+      </div>
+
+      {profile?.role !== 'customer' && (
+        <>
+          <div className="mb-4">
+            <Input
+              type="text"
+              placeholder="search tickets by title, description, comments"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          {!isSearching && (
+            <div className="flex gap-4 mb-4">
+              <div>
+                <label className="block text-sm text-primary/70 mb-1">status</label>
+                <Select 
+                  value={statusFilter} 
+                  onValueChange={(value) => updateParams({ status: value === 'all' ? null : value })}
+                >
+                  <SelectTrigger className="w-[120px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">all</SelectItem>
+                    <SelectItem value="active">active</SelectItem>
+                    <SelectItem value="incomplete">incomplete</SelectItem>
+                    <SelectItem value="completed">completed</SelectItem>
+                    <SelectItem value="new">new</SelectItem>
+                    <SelectItem value="open">open</SelectItem>
+                    <SelectItem value="pending">pending</SelectItem>
+                    <SelectItem value="resolved">resolved</SelectItem>
+                    <SelectItem value="closed">closed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="block text-sm text-primary/70 mb-1">priority</label>
+                <Select 
+                  value={priorityFilter} 
+                  onValueChange={(value) => updateParams({ priority: value === 'all' ? null : value })}
+                >
+                  <SelectTrigger className="w-[120px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">all</SelectItem>
+                    <SelectItem value="low">low</SelectItem>
+                    <SelectItem value="medium">medium</SelectItem>
+                    <SelectItem value="high">high</SelectItem>
+                    <SelectItem value="urgent">urgent</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="block text-sm text-primary/70 mb-1">tag</label>
+                <Popover open={tagSearchOpen} onOpenChange={setTagSearchOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={tagSearchOpen}
+                      className="w-[120px] justify-between"
                     >
-                      all
-                    </CommandItem>
-                    {filteredTags.map(tag => (
-                      <CommandItem
-                        key={tag.id}
-                        value={tag.name}
-                        onSelect={() => {
-                          updateParams({ tag: tag.id })
-                          setTagSearchOpen(false)
-                          setTagSearch('')
-                        }}
-                      >
-                        {tag.name}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </Command>
-              </PopoverContent>
-            </Popover>
-          </div>
+                      {tagFilter === 'all' 
+                        ? 'all'
+                        : usedTags.find(t => t.id === tagFilter)?.name || 'select...'}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[200px] p-0" align="start">
+                    <Command>
+                      <CommandInput 
+                        placeholder="search tags..." 
+                        value={tagSearch}
+                        onValueChange={setTagSearch}
+                      />
+                      <CommandEmpty>no tags found</CommandEmpty>
+                      <CommandGroup className="max-h-[200px] overflow-y-auto">
+                        <CommandItem
+                          value="all"
+                          onSelect={() => {
+                            updateParams({ tag: null })
+                            setTagSearchOpen(false)
+                            setTagSearch('')
+                          }}
+                        >
+                          all
+                        </CommandItem>
+                        {filteredTags.map(tag => (
+                          <CommandItem
+                            key={tag.id}
+                            value={tag.name}
+                            onSelect={() => {
+                              updateParams({ tag: tag.id })
+                              setTagSearchOpen(false)
+                              setTagSearch('')
+                            }}
+                          >
+                            {tag.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
 
-          <div>
-            <label className="block text-sm text-primary/70 mb-1">sort by</label>
-            <Select 
-              value={sortField} 
-              onValueChange={(value) => updateParams({ sort: value })}
-            >
-              <SelectTrigger className="w-[120px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="created_at">created</SelectItem>
-                <SelectItem value="priority">priority</SelectItem>
-                <SelectItem value="status">status</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+              <div>
+                <label className="block text-sm text-primary/70 mb-1">sort by</label>
+                <Select 
+                  value={sortField} 
+                  onValueChange={(value) => updateParams({ sort: value })}
+                >
+                  <SelectTrigger className="w-[120px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="created_at">created</SelectItem>
+                    <SelectItem value="priority">priority</SelectItem>
+                    <SelectItem value="status">status</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <div>
-            <label className="block text-sm text-primary/70 mb-1">order</label>
-            <Select 
-              value={sortOrder} 
-              onValueChange={(value) => updateParams({ order: value })}
-            >
-              <SelectTrigger className="w-[120px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="asc">ascending</SelectItem>
-                <SelectItem value="desc">descending</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+              <div>
+                <label className="block text-sm text-primary/70 mb-1">order</label>
+                <Select 
+                  value={sortOrder} 
+                  onValueChange={(value) => updateParams({ order: value })}
+                >
+                  <SelectTrigger className="w-[120px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="asc">ascending</SelectItem>
+                    <SelectItem value="desc">descending</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <div>
-            <label className="block text-sm text-primary/70 mb-1">assigned to</label>
-            <Select
-              value={assignedId || teamId || assignedFilter}
-              onValueChange={(value) => {
-                if (['any', 'unassigned', 'my-team', 'me'].includes(value)) {
-                  updateParams({
-                    assigned: value === 'any' ? null : value,
-                    assigned_id: null,
-                    team_id: null
-                  })
-                } else {
-                  // For specific user or team assignments
-                  updateParams({
-                    assigned: null,
-                    assigned_id: value === assignedId ? null : value,
-                    team_id: value === teamId ? null : value
-                  })
-                }
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="assigned to..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="any">any</SelectItem>
-                <SelectItem value="unassigned">unassigned</SelectItem>
-                <SelectItem value="my-team">my team</SelectItem>
-                <SelectItem value="me">just me</SelectItem>
-                {assignedId && usernames[assignedId] && (
-                  <SelectItem value={assignedId}>{usernames[assignedId]}</SelectItem>
-                )}
-                {teamId && teams?.find(t => t.id === teamId)?.name && (
-                  <SelectItem value={teamId}>{teams.find(t => t.id === teamId)?.name} team</SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+              <div>
+                <label className="block text-sm text-primary/70 mb-1">assigned to</label>
+                <Select
+                  value={assignedId || teamId || assignedFilter}
+                  onValueChange={(value) => {
+                    if (['any', 'unassigned', 'my-team', 'me'].includes(value)) {
+                      updateParams({
+                        assigned: value === 'any' ? null : value,
+                        assigned_id: null,
+                        team_id: null
+                      })
+                    } else {
+                      // For specific user or team assignments
+                      updateParams({
+                        assigned: null,
+                        assigned_id: value === assignedId ? null : value,
+                        team_id: value === teamId ? null : value
+                      })
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="assigned to..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="any">any</SelectItem>
+                    <SelectItem value="unassigned">unassigned</SelectItem>
+                    <SelectItem value="my-team">my team</SelectItem>
+                    <SelectItem value="me">just me</SelectItem>
+                    {assignedId && usernames[assignedId] && (
+                      <SelectItem value={assignedId}>{usernames[assignedId]}</SelectItem>
+                    )}
+                    {teamId && teams?.find(t => t.id === teamId)?.name && (
+                      <SelectItem value={teamId}>{teams.find(t => t.id === teamId)?.name} team</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       <div className="bg-background border border-primary shadow rounded-lg overflow-hidden">
@@ -673,6 +694,10 @@ export function TicketList() {
           {searchLoading ? (
             <div className="flex items-center justify-center h-32 text-primary/70">
               searching tickets...
+            </div>
+          ) : loading && !searchResults ? (
+            <div className="flex items-center justify-center h-32 text-primary/70">
+              loading tickets...
             </div>
           ) : tickets.length > 0 ? (
             tickets.map(ticket => (

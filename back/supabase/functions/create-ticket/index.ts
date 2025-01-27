@@ -60,9 +60,19 @@ serve(async (req) => {
       body: { ticket_id: ticket.id }
     }).catch(err => console.error('Error generating embedding:', err))
 
-    supabase.functions.invoke('auto-process-ticket', {
-      body: { ticket_id: ticket.id }
-    }).catch(err => console.error('Error auto-processing ticket:', err))
+    // Get user role before auto-processing
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    // Only auto-process customer tickets
+    if (profile?.role === 'customer') {
+      supabase.functions.invoke('auto-process-ticket', {
+        body: { ticket_id: ticket.id }
+      }).catch(err => console.error('Error auto-processing ticket:', err))
+    }
 
     // Add required skills if provided
     if (required_skills?.length) {

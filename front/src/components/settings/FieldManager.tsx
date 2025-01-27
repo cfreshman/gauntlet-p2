@@ -25,7 +25,6 @@ export function FieldManager({ teamId }: FieldManagerProps) {
     createField,
     addFieldToTeam,
     removeFieldFromTeam,
-    deleteField
   } = useFieldDefinitions(teamId || undefined)
 
   if (!teamId) return null
@@ -119,15 +118,6 @@ export function FieldManager({ teamId }: FieldManagerProps) {
                 >
                   remove
                 </Button>
-                {field.owner_id === user?.id && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => deleteField(field.id)}
-                  >
-                    delete
-                  </Button>
-                )}
               </div>
             </div>
           ))}

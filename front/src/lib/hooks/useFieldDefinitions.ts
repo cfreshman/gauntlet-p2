@@ -156,24 +156,6 @@ export function useFieldDefinitions(teamId?: string) {
     }
   }
 
-  async function deleteField(fieldId: string) {
-    try {
-      const { error } = await supabase
-        .from('ticket_field_definitions')
-        .delete()
-        .eq('id', fieldId)
-
-      if (error) throw error
-      setFields(prev => prev.filter(f => f.id !== fieldId))
-      setTeamFields(prev => prev.filter(f => f.id !== fieldId))
-      return true
-    } catch (err) {
-      console.error('Error deleting field:', err)
-      setError('failed to delete field')
-      return false
-    }
-  }
-
   return {
     fields,
     teamFields,
@@ -183,7 +165,6 @@ export function useFieldDefinitions(teamId?: string) {
     updateField,
     addFieldToTeam,
     removeFieldFromTeam,
-    transferOwnership,
-    deleteField
+    transferOwnership
   }
 } 

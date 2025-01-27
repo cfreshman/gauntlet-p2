@@ -28,7 +28,6 @@ export function CustomFieldManager({ teamId }: CustomFieldManagerProps) {
     createField,
     addFieldToTeam,
     removeFieldFromTeam,
-    deleteField
   } = useFieldDefinitions(teamId || undefined)
 
   const [newField, setNewField] = useState<Omit<CustomFieldType, 'id'>>({
@@ -69,10 +68,6 @@ export function CustomFieldManager({ teamId }: CustomFieldManagerProps) {
     } else {
       await addFieldToTeam(fieldId)
     }
-  }
-
-  async function handleDeleteField(fieldId: string) {
-    await deleteField(fieldId)
   }
 
   const teamFieldIds = new Set(teamFields.map(f => f.id))
@@ -150,14 +145,6 @@ export function CustomFieldManager({ teamId }: CustomFieldManagerProps) {
                       <span className="text-sm text-primary/70">team field</span>
                     </div>
                   )}
-                  
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDeleteField(field.id)}
-                  >
-                    delete
-                  </Button>
                 </div>
               </div>
             ))}

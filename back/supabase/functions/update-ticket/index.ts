@@ -58,6 +58,9 @@ serve(async (req) => {
       
       if (profileError) throw profileError
       profile = userProfile
+    } else {
+      // For service role, create a dummy profile with full permissions
+      profile = { role: 'manager' }
     }
 
     // Get current ticket to check permissions

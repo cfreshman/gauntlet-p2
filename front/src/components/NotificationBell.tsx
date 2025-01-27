@@ -55,7 +55,7 @@ export function NotificationBell() {
                   to={notification.link || '#'}
                   className={cn(
                     'block p-2 rounded hover:bg-primary/10',
-                    !notification.read && 'bg-background/10'
+                    !notification.read && 'bg-primary/5 font-medium'
                   )}
                   onClick={() => {
                     markAsRead(notification.id)

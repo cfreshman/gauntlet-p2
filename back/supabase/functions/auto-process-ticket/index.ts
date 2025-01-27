@@ -9,6 +9,7 @@ type Action =
   | { 
       type: 'add_comment', 
       content: string,
+      internal?: boolean,
       references?: Array<
         | { type: 'article', id: string }
         | { type: 'ticket', id: string }
@@ -18,6 +19,17 @@ type Action =
 
 type AutoResponse = {
   actions: Action[]
+}
+
+type StaffMember = {
+  id: string
+  username: string
+  role: 'worker' | 'manager'
+}
+
+type Team = {
+  id: string
+  name: string
 }
 
 serve(async (req) => {
@@ -51,7 +63,7 @@ serve(async (req) => {
     console.log('Fetching ticket data...')
     const { data: ticket, error: ticketError } = await supabase
       .from('tickets')
-      .select('*')
+      .select('*, ticket_tag_links!left(ticket_tags(id, name)), ticket_field_values!left(value, ticket_field_definitions!inner(name))')
       .eq('id', ticket_id)
       .single()
 
@@ -66,144 +78,147 @@ serve(async (req) => {
 
     console.log('Found ticket:', ticket.id, ticket.title)
 
-    // Parallelize KB and ticket searches
-    const [kbResults, ticketResults] = await Promise.all([
-      // Search KB articles
-      supabase.functions.invoke('search-kb', {
-        body: { query: `${ticket.title}\n${ticket.description}` }
-      }).then(res => {
-        if (res.error) throw res.error
-        return res.data
-      }),
-
-      // Search similar tickets
-      supabase.functions.invoke('search-similar-tickets', {
-        body: { query: `${ticket.title}\n${ticket.description}` }
-      }).then(res => {
-        if (res.error) throw res.error
-        return res.data
-      })
-    ])
+    // Search KB articles
+    const { data: kbResults, error: kbError } = await supabase.functions.invoke('search-kb', {
+      body: { query: `${ticket.title}\n${ticket.description}` }
+    })
+    if (kbError) throw kbError
 
     // Get full article content for each result in parallel
-    const [articles, tickets] = await Promise.all([
-      // Fetch article content
-      Promise.all(
-        kbResults.articles.map(async (article) => {
-          try {
-            const { data, error: downloadError } = await supabase.storage
-              .from('kb')
-              .download(`${article.id}.md`)
+    const articles = await Promise.all(
+      kbResults.articles.map(async (article) => {
+        try {
+          // First get article metadata
+          const { data: metadata, error: metadataError } = await supabase
+            .from('kb_articles')
+            .select('*')
+            .eq('id', article.id)
+            .single()
 
-            if (downloadError) {
-              console.error('Error downloading article content:', downloadError)
-              return article // Return article without content if download fails
-            }
-
-            const content = await data.text()
-            return {
-              ...article,
-              content
-            }
-          } catch (err) {
-            console.error('Error processing article:', err)
-            return article // Return article without content on error
+          if (metadataError) {
+            console.error('Error fetching article metadata:', metadataError)
+            return article
           }
-        })
-      ),
 
-      // Fetch full ticket details including resolutions
-      Promise.all(
-        ticketResults.tickets.map(async (ticket) => {
-          try {
-            const { data, error } = await supabase
-              .from('tickets')
-              .select(`
-                *,
-                comments:ticket_comments(
-                  content,
-                  created_at,
-                  internal
-                )
-              `)
-              .eq('id', ticket.id)
-              .single()
+          // Then get content
+          const { data, error: downloadError } = await supabase.storage
+            .from('kb')
+            .download(`${article.id}.md`)
 
-            if (error) {
-              console.error('Error fetching ticket details:', error)
-              return ticket
-            }
-
-            return {
-              ...ticket,
-              ...data,
-              resolution: data.comments
-                ?.filter(c => !c.internal)
-                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
-                ?.content || null
-            }
-          } catch (err) {
-            console.error('Error processing ticket:', err)
-            return ticket
+          if (downloadError) {
+            console.error('Error downloading article content:', downloadError)
+            return { ...metadata, ...article } // Return metadata even if content fails
           }
-        })
-      )
+
+          const content = await data.text()
+          return {
+            ...metadata,
+            ...article,
+            content
+          }
+        } catch (err) {
+          console.error('Error processing article:', err)
+          return article
+        }
+      })
+    )
+
+    // Get team and staff data
+    const [teamsData, teamMembershipsData, staffData, staffSkillsData] = await Promise.all([
+      // Get team data
+      supabase.from('teams').select('id, name'),
+      // Get team memberships  
+      supabase.from('team_members').select('team_id, user_id'),
+      // Get staff data
+      supabase.from('profiles')
+        .select('id, username, role')
+        .in('role', ['worker', 'manager']),
+      // Get staff skills
+      supabase.from('user_skills')
+        .select('user_id, skills!inner(name)')
     ])
 
-    // Get team data for routing
-    const { data: teams, error: teamsError } = await supabase
-      .from('teams')
-      .select('id, name')
-    if (teamsError) throw teamsError
+    if (teamsData.error) throw teamsData.error
+    if (teamMembershipsData.error) throw teamMembershipsData.error  
+    if (staffData.error) throw staffData.error
+    if (staffSkillsData.error) throw staffSkillsData.error
 
-    // Get staff data for routing
-    const { data: staff, error: staffError } = await supabase
-      .from('profiles')
-      .select('id, username, role')
-      .in('role', ['worker', 'manager'])
-    if (staffError) throw staffError
+    // Create skills lookup map
+    const skillsByUser = new Map()
+    staffSkillsData.data?.forEach(skill => {
+      if (!skillsByUser.has(skill.user_id)) {
+        skillsByUser.set(skill.user_id, [])
+      }
+      skillsByUser.get(skill.user_id).push(skill.skills.name)
+    })
+
+    // Create efficient lookup maps
+    const staffMap = new Map<string, StaffMember>(staffData.data.map(s => [s.id, s]))
+    const teamsMap = new Map<string, Team>(teamsData.data.map(t => [t.id, t]))
+    const teamMembershipsByTeam = new Map()
+    const teamMembershipsByUser = new Map()
+    
+    teamMembershipsData.data.forEach(tm => {
+      // Group by team
+      if (!teamMembershipsByTeam.has(tm.team_id)) {
+        teamMembershipsByTeam.set(tm.team_id, [])
+      }
+      teamMembershipsByTeam.get(tm.team_id).push(tm.user_id)
+      
+      // Group by user
+      if (!teamMembershipsByUser.has(tm.user_id)) {
+        teamMembershipsByUser.set(tm.user_id, [])
+      }
+      teamMembershipsByUser.get(tm.user_id).push(tm.team_id)
+    })
 
     // Prepare prompt with context
     const prompt = {
       role: "system",
-      content: `You are an AI support agent that processes new support tickets. You have access to:
-1. Knowledge base articles
-2. Similar historical tickets
-3. Team and staff information
+      content: `Process tickets in this order:
 
-Your task is to:
-1. If you find a KB article or similar ticket that directly answers the user's issue:
-   - Set status to resolved
-   - Add a clear comment explaining the resolution with article references
-   - Assign to an appropriate staff member for follow-up if needed
-   - Be confident in your resolution - if you understand the solution, resolve it
+1. ALWAYS assign to a team member (required):
+   - First try matching skills (any role)
+   - Then try managers in relevant teams
+   - Finally any available manager
+   - Never skip assignment
 
-2. If you find relevant information that partially addresses the issue:
-   - Add a comment with the helpful context and suggestions
-   - Try to assign to an appropriate team/staff member
-   - Do not auto-resolve, let the assigned staff member handle it
+2. Then try auto-resolve if:
+   - Published KB article (not draft) fully solves issue
+   
+3. Always add brief comments for relevant articles:
+   - Public comments: only reference relevant published KB articles
+   - Internal comments: only reference relevant draft articles
+   - Keep comments short and focused
+   
+4. Skip silently if no articles found
 
-3. If you don't find relevant information to help:
-   - Do nothing (return empty actions array)
-   - Let human staff handle it from scratch
+Return JSON array of these actions:
+set_assignee: { 
+  type: 'set_assignee',
+  team_id: string (team UUID),
+  staff_id: string (staff UUID)
+}
 
-IMPORTANT FORMATTING RULES:
-- DO NOT use markdown formatting in comments
-- DO NOT include URLs or links in comments
+set_status: {
+  type: 'set_status',
+  status: 'resolved' (only valid value)
+}
 
-Return a JSON response with an array of actions to take. Each action should be one of:
-{ type: 'set_status', status: 'resolved' }
-{ type: 'set_assignee', team_id: string, staff_id: string }
-{ type: 'add_comment', content: string, references?: Array<{ type: 'article' | 'ticket', id: string }> }
-{ type: 'debug_log', message: string }
+add_comment: {
+  type: 'add_comment',
+  content: string (comment text),
+  internal: boolean,
+  references: Array of {
+    type: 'article',
+    id: string (UUID)
+  }
+}
 
-You MUST include debug_log actions explaining:
-- What action you are taking and why
-- If you are not taking any action, explain exactly why not
-
-The comment should be friendly and clear, with references ordered by relevance to your explanation.
-
-Remember: If you understand the solution from the KB article or similar ticket, be confident and resolve it. Don't be overly cautious - if you can explain the solution clearly, that means you understand it well enough to resolve the ticket.`
+debug_log: {
+  type: 'debug_log',
+  message: string (explain choices)
+}`
     }
 
     const userMessage = {
@@ -213,21 +228,56 @@ Title: ${ticket.title}
 Description: ${ticket.description}
 Priority: ${ticket.priority}
 Created by: ${ticket.created_by}
+Tags: ${ticket.ticket_tag_links?.map((link: any) => link.ticket_tags.name).join(', ') || 'none'}
+Custom Fields:
+${ticket.ticket_field_values?.map((field: any) => `${field.ticket_field_definitions.name}: ${field.value}`).join('\n') || 'none'}
 
 Relevant KB Articles:
-${articles.map((a: any) => `ID: ${a.id}\nTitle: ${a.title}\nContent: ${a.content}\nMatch: ${Math.round(a.similarity * 100)}%`).join('\n\n')}
-
-Similar Tickets:
-${tickets.map((t: any) => `ID: ${t.id}\nTitle: ${t.title}\nDescription: ${t.description}\nResolution: ${t.resolution}\nStatus: ${t.status}\nMatch: ${Math.round(t.similarity * 100)}%`).join('\n\n')}
+${articles.length ? articles.map((a: any) => `ID: ${a.id}
+Title: ${a.title}
+Summary: ${a.summary || 'none'}
+Status: ${Boolean(a.published) === true ? 'published' : 'draft'}
+Version: ${a.version}
+Created by: ${staffMap.get(a.created_by)?.username || 'unknown'}
+Created at: ${new Date(a.created_at).toLocaleString()}
+Updated at: ${new Date(a.updated_at).toLocaleString()}
+Content: ${a.content}
+Match: ${Math.round(a.similarity * 100)}%`).join('\n\n') : 'No relevant articles found'}
 
 Teams:
-${teams.map((t: any) => `ID: ${t.id}\nName: ${t.name}`).join('\n\n')}
+${teamsData.data.map((t: any) => {
+  const memberIds = teamMembershipsByTeam.get(t.id) || []
+  const teamMembers = memberIds
+    .map(id => {
+      const member = staffMap.get(id)
+      return member ? `${member.username} (${member.role})` : null
+    })
+    .filter(Boolean)
+  
+  return `ID: ${t.id}
+Name: ${t.name}
+Members: ${teamMembers.join(', ')}`
+}).join('\n\n')}
 
 Staff:
-${staff.map((s: any) => `ID: ${s.id}\nUsername: ${s.username}\nRole: ${s.role}`).join('\n\n')}`
+${staffData.data.map((s: any) => {
+  const teamIds = teamMembershipsByUser.get(s.id) || []
+  const memberTeams = teamIds
+    .map(id => teamsMap.get(id)?.name)
+    .filter(Boolean)
+  const skills = skillsByUser.get(s.id) || []
+  
+  return `ID: ${s.id}  # Use this full UUID when setting staff_id in set_assignee action
+Username: ${s.username}
+Role: ${s.role}
+Teams: ${memberTeams.length ? memberTeams.join(', ') : 'none'}
+Skills: ${skills.length ? skills.join(', ') : 'none'}`
+}).join('\n\n')}`
     }
 
     // Get AI response
+    console.log('Sending prompt to LLM:', JSON.stringify([prompt, userMessage], null, 2))
+    
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [prompt, userMessage],
@@ -298,7 +348,7 @@ ${staff.map((s: any) => `ID: ${s.id}\nUsername: ${s.username}\nRole: ${s.role}`)
             body: {
               ticket_id,
               content: commentText,
-              internal: false
+              internal: action.internal
             },
             headers: { peer_key: Deno.env.get('PLATFORM_KEY') }
           })
