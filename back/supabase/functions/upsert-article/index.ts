@@ -22,32 +22,46 @@ serve(async (req) => {
       Deno.env.get('PLATFORM_KEY') ?? ''
     );
 
-    // Get auth user
-    const authHeader = req.headers.get("Authorization")?.split(" ")[1] ?? "";
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser(authHeader);
+    // Check if this is a peer function call
+    const isPeerCall = req.headers.get('peer_key') === Deno.env.get('PLATFORM_KEY')
+    console.log('isPeerCall:', isPeerCall)
 
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: "unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    let profile
+    let userId
+    if (!isPeerCall) {
+      // Get auth user
+      const authHeader = req.headers.get("Authorization")?.split(" ")[1] ?? "";
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser(authHeader);
 
-    // Get user's role
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
+      if (userError || !user) {
+        return new Response(JSON.stringify({ error: "unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      userId = user.id
 
-    if (!profile || !["worker", "manager"].includes(profile.role)) {
-      return new Response(JSON.stringify({ error: "forbidden" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      // Get user's role
+      const { data: userProfile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", userId)
+        .single();
+
+      if (!userProfile || !["worker", "manager"].includes(userProfile.role)) {
+        return new Response(JSON.stringify({ error: "forbidden" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      profile = userProfile
+    } else {
+      // For peer calls, create a dummy profile with manager role
+      profile = { role: 'manager' }
+      userId = null // Use null as the creator for peer calls
     }
 
     // Get request body
@@ -89,7 +103,8 @@ serve(async (req) => {
         // 1. User is a manager
         // 2. User is taking ownership
         // 3. User owns the article
-        if (profile.role !== "manager" && !body.takeOwnership && existing.created_by !== user.id) {
+        // 4. This is a peer call
+        if (!isPeerCall && profile.role !== "manager" && !body.takeOwnership && existing.created_by !== userId) {
           return new Response(
             JSON.stringify({ error: "can only edit your own articles" }),
             {
@@ -135,7 +150,7 @@ serve(async (req) => {
           storage_path: storagePath,
           published: body.published ?? false,
           version: version ?? 1,
-          created_by: body.id ? (body.takeOwnership ? user.id : undefined) : user.id,
+          created_by: isPeerCall ? null : (body.id ? (body.takeOwnership ? userId : undefined) : userId),
           updated_at: new Date().toISOString(),
         },
         { onConflict: "id" }

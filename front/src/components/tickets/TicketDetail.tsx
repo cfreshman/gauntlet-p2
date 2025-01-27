@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import type { Ticket, TicketStatus, TicketPriority } from '../../lib/types'
 import { useAuth } from '../../lib/hooks/useAuth'
@@ -73,6 +73,8 @@ export function TicketDetail() {
   const [error, setError] = useState<string | null>(null)
   const [updatingTicket, setUpdatingTicket] = useState(false)
   const [updatingComment, setUpdatingComment] = useState(false)
+  const [linkedArticle, setLinkedArticle] = useState<{id: string} | null>(null)
+  const [generatingArticle, setGeneratingArticle] = useState(false)
   const { getAssignableMembers } = useTeamAssignment(profile?.id)
   const { fields, values, updateValue, loadFields } = useCustomFields(id)
   const { fields: allFields } = useFieldDefinitions()
@@ -182,14 +184,25 @@ export function TicketDetail() {
 
   async function loadTicket() {
     try {
-      const { data, error } = await supabase
+      const { data: ticketData, error: ticketError } = await supabase
         .from('tickets')
         .select('*')
         .eq('id', id)
         .single()
 
-      if (error) throw error
-      setTicket(data)
+      if (ticketError) throw ticketError
+      setTicket(ticketData)
+
+      // Load linked article
+      const { data: articleData, error: articleError } = await supabase
+        .from('kb_article_tickets')
+        .select('article_id')
+        .eq('ticket_id', id)
+        .single()
+
+      if (articleError && articleError.code !== 'PGRST116') throw articleError
+      setLinkedArticle(articleData ? { id: articleData.article_id } : null)
+      
       setLoading(false)
     } catch (e) {
       console.error('Error loading ticket:', e)
@@ -1099,7 +1112,7 @@ export function TicketDetail() {
               </div>
 
               <div className="mt-6 pt-4 border-t border-primary/20">
-                <h3 className="text-sm font-medium text-primary mb-4">add comment</h3>
+                <h3 className="text-sm font-semibold text-primary mb-4">add comment</h3>
                 <form onSubmit={handleSubmitComment} className="space-y-4">
                   <div>
                     <Textarea 
@@ -1140,6 +1153,46 @@ export function TicketDetail() {
             <div className="bg-background border border-primary shadow rounded-lg p-4">
               <h3 className="font-medium text-primary mb-2">similar tickets</h3>
               <SimilarTickets ticketId={id!} />
+            </div>
+          )}
+
+          {/* KB Article */}
+          {isManagerOrWorker && (linkedArticle || ((ticket.status === 'resolved' || ticket.status === 'closed') && (ticket.assigned_to === user?.id || profile?.role === 'manager'))) && (
+            <div className="mt-4 bg-background border border-primary shadow rounded-lg p-4">
+              <h3 className="font-medium text-primary mb-2">kb article</h3>
+              {linkedArticle ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                >
+                  <Link to={`/help/${linkedArticle.id}`}>
+                    view article
+                  </Link>
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    setGeneratingArticle(true)
+                    try {
+                      await supabase.functions.invoke('generate-kb-from-ticket', {
+                        body: { ticket_id: id }
+                      })
+                      await loadTicket() // This will refresh the linkedArticle state
+                    } catch (e) {
+                      console.error('Error generating article:', e)
+                      setError('failed to generate article')
+                    } finally {
+                      setGeneratingArticle(false)
+                    }
+                  }}
+                  disabled={generatingArticle}
+                >
+                  {generatingArticle ? 'generating...' : 'generate kb article'}
+                </Button>
+              )}
             </div>
           )}
         </div>

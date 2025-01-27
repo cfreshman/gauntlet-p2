@@ -6,10 +6,10 @@ interface UserCache {
 }
 
 export function useUsernames() {
-  const [usernames, setUsernames] = useState<UserCache>({})
+  const [usernames, setUsernames] = useState<UserCache>({ null: 'ai assistant' })
   const [loading, setLoading] = useState(false)
 
-  async function fetchUsername(userId: string) {
+  async function fetchUsername(userId: string | null) {
     if (!userId) return
     if (usernames[userId]) return usernames[userId]
 
