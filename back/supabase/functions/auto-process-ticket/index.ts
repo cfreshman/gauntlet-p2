@@ -84,15 +84,32 @@ serve(async (req) => {
 
     console.log('Found ticket:', ticket.id, ticket.title)
 
-    // Search KB articles
-    const { data: kbResults, error: kbError } = await supabase.functions.invoke('search-kb', {
-      body: { query: `${ticket.title}\n${ticket.description}` }
-    })
-    if (kbError) throw kbError
+    // Search KB articles and similar tickets in parallel
+    const [kbResults, similarResults] = await Promise.all([
+      supabase.functions.invoke('search-kb', {
+        body: { query: `${ticket.title}\n${ticket.description}` },
+        headers: {
+          'peer_key': Deno.env.get('PLATFORM_KEY')
+        }
+      }),
+      supabase.functions.invoke('search-similar-tickets', {
+        body: { 
+          query: `${ticket.title}\n${ticket.description}`,
+          // Pass a system user ID that has staff permissions
+          requesting_user_id: ticket.assigned_to || ticket.created_by
+        },
+        headers: {
+          'peer_key': Deno.env.get('PLATFORM_KEY')
+        }
+      })
+    ])
+
+    if (kbResults.error) throw kbResults.error
+    if (similarResults.error) throw similarResults.error
 
     // Get full article content for each result in parallel
     const articles = await Promise.all(
-      kbResults.articles.map(async (article) => {
+      kbResults.data.articles.map(async (article) => {
         try {
           // First get article metadata
           const { data: metadata, error: metadataError } = await supabase
@@ -129,6 +146,37 @@ serve(async (req) => {
       })
     )
 
+    // Get full ticket data for each similar result
+    const similarTickets = await Promise.all(
+      (similarResults.data?.tickets || []).map(async (result) => {
+        try {
+          const { data: ticketData, error: ticketError } = await supabase
+            .from('tickets')
+            .select(`
+              *,
+              ticket_tag_links!left(ticket_tags(name)),
+              ticket_field_values!left(value, ticket_field_definitions!inner(name)),
+              ticket_comments!left(content, internal, created_by)
+            `)
+            .eq('id', result.id)
+            .single()
+
+          if (ticketError) {
+            console.error('Error fetching ticket data:', ticketError)
+            return result
+          }
+
+          return {
+            ...ticketData,
+            similarity: result.similarity
+          }
+        } catch (err) {
+          console.error('Error processing similar ticket:', err)
+          return result
+        }
+      })
+    )
+
     // Create trace now that we have all the initial data
     const trace = langfuse.trace({
       id: `ticket-${ticket_id}`,
@@ -146,6 +194,11 @@ serve(async (req) => {
           title: a.title,
           similarity: Math.round(a.similarity * 100),
           isPublished: Boolean(a.published)
+        })),
+        similarTickets: similarTickets.map(t => ({
+          id: t.id,
+          title: t.title,
+          similarity: Math.round(t.similarity * 100)
         }))
       }
     })
@@ -210,15 +263,62 @@ serve(async (req) => {
    - Finally any available manager
    - Never skip assignment
 
-2. Then try auto-resolve if:
-   - Published KB article (not draft) fully solves issue
+2. ANALYZE SIMILAR TICKETS:
+   - Review past tickets in the list
+   - Study their solutions and outcomes
+   - Note common patterns in successful resolutions
+   - Use these insights for internal context
+   - Never reference similar tickets in public comments
+
+3. Then try auto-resolve ONLY if:
+   - A PUBLISHED KB article (Status: published) fully solves issue, OR
+   - You can write a complete solution in a public comment
+   - Never reference tickets in public comments
    
-3. Always add brief comments for relevant articles:
-   - Public comments: only reference relevant published KB articles
-   - Internal comments: only reference relevant draft articles
-   - Keep comments short and focused
-   
-4. Skip silently if no articles found
+4. Add comments based on these strict rules:
+   - Public comments:
+     * ONLY reference articles where Status: published
+     * NEVER reference articles where Status: draft
+     * Keep focused on direct solutions
+     * Never mention other tickets
+     * Double check article.Status before referencing
+   - Internal comments only:
+     * ALWAYS add internal comment if similar tickets found
+     * Note resolution patterns and insights
+     * Can reference draft articles
+     * Can reference similar tickets
+     * Use for staff context/patterns
+   - Keep all comments concise
+   - When referencing articles:
+     * VALIDATION REQUIRED: Check article.Status === 'published'
+     * If article.Status !== 'published', DO NOT reference it in public comments
+     * Explain relevance to current issue
+     * Adapt solutions to customer context
+   - When referencing tickets:
+     * ONLY in internal comments
+     * Focus on solution patterns
+     * Never expose customer details
+     * No customer-to-ticket linking
+
+CRITICAL VALIDATION:
+- Before adding any article reference to a public comment:
+  1. Find the article in the KB Articles list
+  2. Check if Status: published (exact match required)
+  3. If Status is not 'published', DO NOT reference the article
+  4. If unsure about Status, DO NOT reference the article
+
+SIMILAR TICKETS HANDLING:
+- For each relevant ticket:
+  1. Review resolution approach
+  2. Note successful patterns
+  3. Create internal comment with insights
+  4. Focus on solution patterns
+  5. Never expose in public comments
+
+OTHER NOTES:
+- don't reference IDs in actual comments
+- try to use your own logical reasoning to solve the problem
+- you can leave multiple comments, e.g. a public and internal comment
 
 Return JSON array of these actions:
 set_assignee: { 
@@ -237,7 +337,7 @@ add_comment: {
   content: string (comment text),
   internal: boolean,
   references: Array of {
-    type: 'article',
+    type: 'article' | 'ticket',
     id: string (UUID)
   }
 }
@@ -270,6 +370,19 @@ Created at: ${new Date(a.created_at).toLocaleString()}
 Updated at: ${new Date(a.updated_at).toLocaleString()}
 Content: ${a.content}
 Match: ${Math.round(a.similarity * 100)}%`).join('\n\n') : 'No relevant articles found'}
+
+Similar Tickets:
+${similarTickets.length ? similarTickets.map((t: any) => `ID: ${t.id}
+Title: ${t.title}
+Description: ${t.description}
+Status: ${t.status}
+Priority: ${t.priority}
+Tags: ${t.ticket_tag_links?.map((link: any) => link.ticket_tags.name).join(', ') || 'none'}
+Custom Fields:
+${t.ticket_field_values?.map((field: any) => `${field.ticket_field_definitions.name}: ${field.value}`).join('\n') || 'none'}
+Comments:
+${t.ticket_comments?.filter((c: any) => !c.internal).map((c: any) => `- ${c.content}`).join('\n') || 'none'}
+Match: ${Math.round(t.similarity * 100)}%`).join('\n\n') : 'No similar tickets found'}
 
 Teams:
 ${teamsData.data.map((t: any) => {

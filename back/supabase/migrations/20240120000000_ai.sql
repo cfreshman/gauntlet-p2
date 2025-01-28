@@ -139,15 +139,20 @@ BEGIN
   JOIN tickets t ON t.id = e.ticket_id
   WHERE
     -- Apply RLS: staff can see all tickets, customers only their own
+    -- Skip RLS check if requesting_user_id is null (system call)
     (
-      -- Check if user is staff
-      EXISTS (
-        SELECT 1 FROM profiles p 
-        WHERE p.id = requesting_user_id 
-        AND (p.role = 'worker' OR p.role = 'manager')
+      requesting_user_id IS NULL
+      OR
+      (
+        -- Check if user is staff
+        EXISTS (
+          SELECT 1 FROM profiles p 
+          WHERE p.id = requesting_user_id 
+          AND (p.role = 'worker' OR p.role = 'manager')
+        )
+        -- If not staff, only show user's tickets
+        OR t.created_by = requesting_user_id
       )
-      -- If not staff, only show user's tickets
-      OR t.created_by = requesting_user_id
     )
     -- Similarity threshold
     AND 1 - (e.embedding <-> query_embedding) > match_threshold

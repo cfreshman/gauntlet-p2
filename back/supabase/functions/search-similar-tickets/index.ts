@@ -17,10 +17,11 @@ serve(async (req) => {
 
     // Get auth user and role
     const authHeader = req.headers.get('Authorization')?.split(' ')[1]
-    let isStaff = false
+    const peerKey = req.headers.get('peer_key')
+    let isStaff = peerKey === Deno.env.get('PLATFORM_KEY')
     let userId = null
     
-    if (authHeader) {
+    if (!isStaff && authHeader) {
       const { data: { user }, error: userError } = await supabase.auth.getUser(authHeader)
       if (!userError && user) {
         userId = user.id
@@ -35,7 +36,7 @@ serve(async (req) => {
     }
 
     // Get request data
-    const { query, ticket_id, limit = 5 } = await req.json()
+    const { query, ticket_id, limit = 5, requesting_user_id } = await req.json()
     if (!query && !ticket_id) throw new Error('query or ticket_id required')
 
     console.log('Searching with:', { query, ticket_id, limit })
@@ -120,7 +121,7 @@ serve(async (req) => {
         query_embedding: response.data[0].embedding,
         match_threshold: 0.01,
         match_count: limit,
-        requesting_user_id: userId
+        requesting_user_id: isStaff ? null : userId // Pass null for system calls to bypass RLS
       })
 
     if (searchError) {
