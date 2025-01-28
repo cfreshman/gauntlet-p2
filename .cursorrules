@@ -28,8 +28,9 @@ build a modern customer support system (crm) with generative ai enhancements. th
      - 🟡 quick toggle for internal/regular comments
      - 🟡 enhanced dashboard visualizations
      - 🟡 notification preferences/email notifications
+     - 🟡 cluster visualization for tickets
 
-3. **week 2 mvp (by jan 27, 2025)**  
+3. **week 2 final (by jan 31, 2025)**  
    - introduce basic ai features:
      - ✅ auto-route tickets based on content
      - ✅ auto-reply for common questions
@@ -38,34 +39,11 @@ build a modern customer support system (crm) with generative ai enhancements. th
    - ✅ any ai logic must be optional/toggleable  
    - ✅ integrate with knowledge base
    - ✅ implement RAG system for context
-
-4. **week 2 final (by jan 31, 2025)**  
    - refine ai features:
-     - ✅ knowledge-based suggestions
-     - ✅ smart escalation rules
-     - ✅ ticket summarization
+     - ✅ article generation from completed tickets
      - ✅ performance analytics
+     - ✅ ticket summary generation
    - ✅ ensure human-in-the-loop oversight
-
-**next steps**
-- potential enhancements:
-  - multi-channel support (email, chat)
-  - mobile app/pwa version
-  - enhanced analytics dashboard
-  - multilingual support
-  - api documentation and sdks
-- production readiness:
-  - load testing
-  - security audit
-  - backup procedures
-  - monitoring setup
-  - user documentation
-- business development:
-  - marketing materials
-  - pricing tiers
-  - onboarding flow
-  - support infrastructure
-  - case studies/demos
 
 **important notes**  
 - maintain supabase-based backend, rls, and edge functions

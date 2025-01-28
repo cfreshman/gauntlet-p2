@@ -48,8 +48,8 @@ type TextPart = string | LinkPart
 export function formatTextWithLinks(text: string): TextPart[] {
   if (!text) return []
   
-  // More precise regex that requires valid URL patterns
-  const urlRegex = /\b(https?:\/\/)?(localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|([a-zA-Z0-9-]+\.)*[a-zA-Z0-9-]+\.[a-zA-Z]{2,})(:\d+)?(\/[a-zA-Z0-9-._~:/?#[\]@!$&'()*+,;=]*)?(?=[^a-zA-Z0-9-]|$)/gi
+  // More precise regex that requires valid URL patterns and handles trailing punctuation
+  const urlRegex = /\b(https?:\/\/)?(localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|([a-zA-Z0-9-]+\.)*[a-zA-Z0-9-]+\.[a-zA-Z]{2,})(:\d+)?(\/[a-zA-Z0-9-._~:/?#[\]@!$&'*+,;=]*[a-zA-Z0-9-_~:/?#[\]@!$&'*+;=])?(?=[^a-zA-Z0-9-_~:/?#[\]@!$&'*+;=]|$)/gi
   
   // Split text into parts (URLs and non-URLs)
   const parts: TextPart[] = []
@@ -69,8 +69,10 @@ export function formatTextWithLinks(text: string): TextPart[] {
     
     // Add the URL as a link object
     const matchText = match[0]
-    const displayUrl = matchText.replace(/^https?:\/\//, '')
-    const fullUrl = matchText.startsWith('http') ? matchText : `http://${matchText}`
+    // Remove any trailing punctuation that might have been included
+    const cleanedUrl = matchText.replace(/[.,!?;:]+$/, '')
+    const displayUrl = cleanedUrl.replace(/^https?:\/\//, '')
+    const fullUrl = cleanedUrl.startsWith('http') ? cleanedUrl : `http://${cleanedUrl}`
 
     // Check if this is an internal link
     try {

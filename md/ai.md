@@ -32,6 +32,8 @@
   - Team/worker assignment
   - Comment generation
   - KB article linking
+  - Ticket summarization
+  - Analytics generation
 
 ### Security
 - RLS on all tables

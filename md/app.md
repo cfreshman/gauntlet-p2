@@ -28,6 +28,8 @@
   - Auto-routing
   - Response suggestions
   - Similar ticket matching
+  - Ticket summaries
+  - Performance analytics
 
 ### Knowledge Base
 - Article management with versions

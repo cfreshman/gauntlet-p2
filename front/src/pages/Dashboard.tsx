@@ -6,6 +6,7 @@ import { Button } from '../components/ui/button'
 import { FeedbackBarGraph } from '../components/feedback/FeedbackBarGraph'
 import { TeamFeedbackRanking } from '../components/feedback/TeamFeedbackRanking'
 import { useFeedback } from '../lib/hooks/useFeedback'
+import { TicketSummary } from '../components/dashboard/TicketSummary'
 
 interface TicketCounts {
   total: number
@@ -214,6 +215,10 @@ export function Dashboard() {
           </div>
         </div>
 
+        <div className="mb-6">
+          <TicketSummary />
+        </div>
+
         <div className="grid grid-cols-2 gap-6">
           <div className="bg-background border border-primary shadow rounded-lg p-6">
             <h2 className="text-lg font-medium text-primary mb-4">team statuses</h2>
@@ -291,6 +296,10 @@ export function Dashboard() {
               <Button>new ticket</Button>
             </Link>
           </div>
+        </div>
+
+        <div className="mb-6">
+          <TicketSummary />
         </div>
 
         <div className="grid grid-cols-2 gap-6">
