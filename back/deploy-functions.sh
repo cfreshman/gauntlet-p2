@@ -114,5 +114,6 @@ supabase functions deploy generate-ticket-embedding --project-ref $PROJECT_REF
 supabase functions deploy search-similar-tickets --project-ref $PROJECT_REF
 supabase functions deploy auto-process-ticket --project-ref $PROJECT_REF
 supabase functions deploy generate-kb-from-ticket --project-ref $PROJECT_REF
+supabase functions deploy get-ticket-coordinates --project-ref $PROJECT_REF
 
 echo "All functions deployed to $1 project: $PROJECT_REF" 

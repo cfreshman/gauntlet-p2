@@ -12,6 +12,8 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import { ChevronsUpDown } from 'lucide-react'
 import { Input } from '../ui/input'
+import { TicketClusterView } from './TicketClusterView'
+import { Switch } from '../ui/switch'
 
 interface TicketWithProfile extends Ticket {
   assigned_to: string | null
@@ -63,6 +65,7 @@ export function TicketList() {
   const [tagSearch, setTagSearch] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<null | TicketWithProfile[]>(null)
+  const [showClusters, setShowClusters] = useState(false)
 
   // Restore filters from storage if URL is empty
   useEffect(() => {
@@ -469,14 +472,29 @@ export function TicketList() {
         {!isSearching && (
           <div className="flex gap-2">
             {profile?.role !== 'customer' && (
-              <Link to={`/tickets?${new URLSearchParams({
-                ...Object.fromEntries(searchParams),
-                view: viewMode === 'templates' ? 'tickets' : 'templates'
-              })}`}>
-                <Button variant="outline">
-                  view {viewMode === 'templates' ? 'tickets' : 'templates'}
-                </Button>
-              </Link>
+              <>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={showClusters}
+                    onCheckedChange={setShowClusters}
+                    id="show-clusters"
+                  />
+                  <label
+                    htmlFor="show-clusters"
+                    className="text-sm text-primary/70 cursor-pointer"
+                  >
+                    show clusters
+                  </label>
+                </div>
+                <Link to={`/tickets?${new URLSearchParams({
+                  ...Object.fromEntries(searchParams),
+                  view: viewMode === 'templates' ? 'tickets' : 'templates'
+                })}`}>
+                  <Button variant="outline">
+                    view {viewMode === 'templates' ? 'tickets' : 'templates'}
+                  </Button>
+                </Link>
+              </>
             )}
             <Link to="/tickets/new">
               <Button>new ticket</Button>
@@ -668,6 +686,12 @@ export function TicketList() {
             </div>
           )}
         </>
+      )}
+
+      {showClusters && !isSearching && profile?.role !== 'customer' && (
+        <div className="mb-4">
+          <TicketClusterView tickets={tickets} />
+        </div>
       )}
 
       <div className="bg-background border border-primary shadow rounded-lg overflow-hidden">
