@@ -1,196 +1,132 @@
 # auto-crm
 
-Modern customer support system with AI enhancements for efficient ticket management and customer service.
+Modern customer support system with AI enhancements for automating and scaling support workflows.
 
-## Overview
+## Features
 
-auto-crm provides:
-- Comprehensive ticket management with role-based access control
-- Modern customer support portal with real-time updates
-- Team management and intelligent ticket assignment
-- Advanced comment system with internal notes
-- Template system for quick responses
+### Core System
+- Role-based access (customer, worker, manager)
+- Ticket lifecycle management
+- Team organization and assignments
+- Internal collaboration
+- Template system
+- Theme customization
+- Feedback system
 - Real-time notifications
-- Tag-based organization
 
-## Project Structure
+### AI Features
+- Auto-routing and replies
+- Response suggestions
+- Knowledge base integration
+- RAG system for context
+- Performance analytics
+- Human-in-the-loop oversight
 
-```
-/
-├── back/                    # Backend (Supabase)
-│   ├── supabase/           
-│   │   ├── functions/      # Edge Functions
-│   │   │   ├── _shared/    # Shared utilities
-│   │   │   ├── create-ticket/
-│   │   │   ├── update-ticket/
-│   │   │   └── ...
-│   │   └── migrations/     # Database schemas
-│   ├── deploy-functions.sh # Deploy edge functions
-│   └── reset-and-migrate.sh # Reset and migrate database
-│
-├── front/                  # Frontend (React)
-│   ├── src/
-│   │   ├── components/    # React components
-│   │   │   ├── tickets/   # Ticket-related components
-│   │   │   ├── teams/     # Team management
-│   │   │   └── ui/        # Shared UI components
-│   │   ├── lib/          # Hooks and utilities
-│   │   │   ├── hooks/    # React hooks
-│   │   │   ├── types.ts  # TypeScript types
-│   │   │   └── supabase.ts # Supabase client
-│   │   └── styles/       # Global styles
-│   └── public/           # Static assets
-│
-└── md/                   # Documentation
-    ├── kb.md            # Knowledge base
-    ├── map.md          # Project map
-    └── notifications.md # Notification system
-```
+## Tech Stack
+- Frontend: React + TypeScript + Vite
+- Backend: Supabase with Edge Functions
+- Database: PostgreSQL with RLS
+- Storage: Supabase Storage
+- Auth: Supabase Auth
+- AI: OpenAI GPT-4 + Embeddings
+- Analytics: Langfuse
 
-## Getting Started
+## Documentation
+- [Requirements](md/reqs.md) - Project goals and roadmap
+- [App Overview](md/app.md) - System architecture
+- [AI System](md/ai.md) - AI implementation
+- [Knowledge Base](md/kb.md) - KB system
+- [Notifications](md/notifications.md) - Real-time updates
 
-### 1. Backend Setup
+## Quick Start
 
-1. Create two Supabase projects (development and production)
-
-2. Set up environment:
+### Backend Setup
+1. Create Supabase project
+2. Set environment:
 ```bash
 cd back
 cp .env.example .env.development
-cp .env.example .env.production
 ```
-
-3. Update environment files with your Supabase project URLs:
+3. Update `.env.development`:
 ```env
-# .env.development or .env.production
 PLATFORM_URL=https://[project-ref].supabase.co
 PLATFORM_KEY=[service-role-key]
+OPENAI_API_KEY=[your-key]
 ```
-
-4. Deploy database schema:
-> ⚠️ Warning: This will completely reset the database. Make sure you have backups if needed.
+4. Deploy:
 ```bash
-cd back
-chmod +x reset-and-migrate.sh
-
-# For development environment
 ./reset-and-migrate.sh dev
-
-# For production environment
-./reset-and-migrate.sh prod
+./deploy-functions.sh dev
 ```
 
-5. Deploy Edge Functions:
-```bash
-chmod +x deploy-functions.sh
-./deploy-functions.sh dev    # Deploy to development
-# or
-./deploy-functions.sh prod   # Deploy to production
-```
-
-### 2. Frontend Setup
-
-1. Set up environment:
+### Frontend Setup
+1. Set environment:
 ```bash
 cd front
 cp .env.example .env.development
-cp .env.example .env.production
 ```
-
-2. Update environment files:
+2. Update `.env.development`:
 ```env
 VITE_SUPABASE_URL=https://[project-ref].supabase.co
 VITE_SUPABASE_ANON_KEY=[anon-key]
 ```
-
-3. Install and run:
+3. Run:
 ```bash
 yarn install
 yarn dev
 ```
 
-## Features
+## Production Deployment
 
-### Role-Based Access
+### Backend
+Repeat dev setup with `.env.production`, then:
+```bash
+./reset-and-migrate.sh prod
+./deploy-functions.sh prod
+```
 
-- **Customers**
-  - Submit and track support requests
-  - Communicate with support team
-  - Provide feedback on resolved issues
+### Frontend (AWS Amplify)
+1. Create new Amplify app
+2. Connect to GitHub repository
+3. Add environment variables from `.env.production`
+4. Deploy:
+- Amplify will auto-deploy on push to main
+- Manual deploy via Amplify console
+- Handles build and hosting automatically
 
-- **Workers**
-  - Handle assigned support tickets
-  - Collaborate with team members
-  - Manage customer communications
+### Environment Differences
+- Development: Local frontend (localhost:5173)
+- Production: AWS Amplify hosted frontend
+- Separate Supabase projects for isolation
+- Different API keys and security settings
+- Production monitoring via Amplify console
 
-- **Managers**
-  - Oversee support operations
-  - Manage teams and workload
-  - Monitor performance and quality
+## Project Structure
+```
+/
+├── back/                  # Backend (Supabase)
+│   └── supabase/           
+│       ├── functions/    # Edge Functions
+│       └── migrations/   # Database schemas
+├── front/                # Frontend (React)
+│   └── src/
+│       ├── components/   # React components
+│       ├── lib/         # Utilities
+│       ├── pages/       # Routes
+│       └── styles/      # Global styles
+└── md/                  # Documentation
+```
 
-### Core Features
-
-- **Ticket Management**
-  - Priority levels (low, medium, high, urgent)
-  - Status tracking (new, open, pending, resolved, closed)
-  - Tag system
-  - Knowledge base integration
-
-- **Communication**
-  - Public and internal comments
-  - Response templates
-  - Real-time notifications
-
-- **Security**
-  - Row-level security (RLS)
-  - Role-based access control
-  - Change tracking:
-    - Timestamps for all records (created, updated)
-    - User attribution for all actions
-    - Real-time change notifications
-    - 30-day notification history
-
-## Development vs Production
-
-The project supports two environments:
-
-**Development**
-- Local frontend (localhost:5173)
-- Development Supabase project
-- Development database
-- Real-time development
-
-**Production**
-- Hosted frontend
-- Production Supabase project
-- Production database
-- Optimized performance
-
-## Troubleshooting
-
-### Edge Functions
-- Ensure Docker Desktop is running
-- Verify environment variables
-- Check function logs in Supabase Dashboard
-- Confirm CORS settings
-
-### Database
-- Verify RLS policies are applied
-- Check table relationships and triggers
-- Ensure migrations ran in correct order
-- Monitor real-time subscriptions
-
-### Frontend
-- Confirm environment variables match Supabase project
-- Check browser console for errors
-- Verify API endpoints are accessible
-- Clear browser cache if needed
-
-## Security Notes
-
+## Security
 - Never expose service role keys
 - Always use RLS policies
 - Keep environment variables secure
-- Regular security audits
 - Monitor access logs
+
+## Troubleshooting
+- Verify environment variables
+- Check function logs in Supabase
+- Verify RLS policies
+- Check browser console
+- Clear cache if needed
 

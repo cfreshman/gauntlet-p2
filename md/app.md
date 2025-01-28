@@ -1,150 +1,74 @@
 # auto-crm Application Overview
 
-## 1. Architecture Overview
+## Tech Stack
+- Frontend: React + TypeScript + Vite
+- Backend: Supabase with Edge Functions
+- Database: PostgreSQL with RLS
+- Storage: Supabase Storage
+- Auth: Supabase Auth
+- AI: OpenAI GPT-4 + Embeddings
+- Analytics: Langfuse
 
-### Technology Stack
-- **Frontend**: React + TypeScript + Vite
-- **Backend**: Supabase with Edge Functions
-- **Database**: PostgreSQL with RLS policies
-- **Storage**: Supabase Storage for KB articles
-- **Authentication**: Supabase Auth
+## Core Features
 
-## 2. Core Features Implemented
+### User System
+- Roles: customer, worker, manager
+- Team organization and skills
+- Profile and invite management
+- RLS policies
 
-### A. Authentication & User Management
-- Complete role system (customer, worker, manager)
-- Team-based organization
-- Profile management
-- Invite system for team members
-- Password reset flow
-- Username/email management
-
-### B. Ticket System
-- Full CRUD operations
-- Status tracking (new, open, pending, resolved, closed)
-- Priority levels (low, medium, high, urgent)
-- Assignment system with team context
-- Custom fields support
-- Tags and categorization
-- Template system for quick responses
-- Feedback and rating system
-
-### C. Knowledge Base
-- Article creation and management
-- Markdown support
-- Public/private article visibility
-- Version tracking
-- Storage integration for content
-
-### D. Team Management
-- Team creation and updates
-- Member management
-- Skill tracking
-- Role-based permissions
+### Tickets
+- CRUD with real-time updates
+- Status (new, open, pending, resolved, closed)
+- Priority (low, medium, high, urgent)
 - Team assignments
-
-### E. Security Features
-- Row Level Security (RLS) throughout
-- Role-based access control
-- Secure edge functions
-- Environment separation (dev/prod)
-- Proper auth token handling
-
-## 3. Technical Implementation
-
-### A. Frontend Structure
-```
-front/src/
-├── components/     # UI components
-├── lib/           # Utilities and hooks
-├── pages/         # Route components
-└── styles/        # Global styles
-```
-
-### B. Backend Structure
-```
-back/
-├── supabase/
-│   ├── functions/  # Edge functions
-│   └── migrations/ # Database setup
-```
-
-## 4. Notable Features
-
-### A. Real-time Updates
-- Live notifications
-- Comment updates
-- Status changes
-- Team modifications
-
-### B. Custom UI Components
-- Modern, accessible components
-- Theme customization
-- Responsive design
-- Loading states
-
-### C. Error Handling
-- Form validation
-- API error handling
-- Fallback UI states
-- Security error handling
-
-## 5. Development Tooling
-- TypeScript for type safety
-- ESLint for code quality
-- Tailwind for styling
-- Vite for fast development
-- Deployment scripts
-
-## 6. Project Status
-
-### Completed (✅)
-- Week 1 MVP
-  - Basic CRM functionality
-  - User roles and permissions
-  - Ticket management
-  - Team organization
-  
-- Week 1 Final
-  - Knowledge base
-  - Template system
-  - Feedback system
-  - UI polish
-
-### In Progress (⏳)
-- Week 2 MVP (Starting Jan 27, 2025)
-  - AI feature integration
+- Custom fields and tags
+- Templates and feedback
+- AI features:
   - Auto-routing
   - Response suggestions
-  - Knowledge base integration
+  - Similar ticket matching
 
-- Week 2 Final (Due Jan 31, 2025)
-  - Advanced AI features
-  - Learning system
-  - Performance analytics
-  - Final demo
+### Knowledge Base
+- Article management with versions
+- Public/private visibility
+- Markdown support
+- AI integration:
+  - Semantic search
+  - Auto-generation from tickets
+  - RAG for context
 
-## 7. Development Workflow
+### Security
+- Row Level Security (RLS)
+- Role-based access
+- Secure edge functions
+- Environment separation
+- Auth token handling
 
-### Environment Setup
-1. Clone repository
-2. Install dependencies: `yarn install`
-3. Set up environment variables
-4. Start development server: `yarn dev`
+## Project Structure
+```
+front/src/
+├── components/    # UI components
+├── lib/          # Utilities
+├── pages/        # Routes
+└── styles/       # Global styles
 
-### Deployment
-1. Build application: `yarn build`
-2. Deploy edge functions: `./back/deploy-functions.sh`
-3. Run migrations: `./back/reset-and-migrate.sh`
+back/supabase/
+├── functions/    # Edge functions
+└── migrations/   # Database setup
+```
 
-### Environment Variables
-- Development: `.env.development`
-- Production: `.env.production`
-- Example template: `.env.example`
+## Development
+- Install: `yarn install`
+- Environment: Copy `.env.example`
+- Dev server: `yarn dev`
+- Deploy:
+  1. `yarn build`
+  2. `./back/deploy-functions.sh`
+  3. `./back/reset-and-migrate.sh`
 
-## 8. Security Considerations
-- All database access through RLS policies
-- Edge functions for sensitive operations
-- Proper role validation
-- Secure environment variable handling
-- Team-based access control 
+## Environment Variables
+Required:
+- Supabase credentials (URL, keys)
+- OpenAI API key
+- Langfuse keys (optional)
