@@ -62,11 +62,7 @@ export function TicketList() {
   const [tagSearchOpen, setTagSearchOpen] = useState(false)
   const [tagSearch, setTagSearch] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState<null | Array<{
-    id: string
-    similarity: number
-    ticket: TicketWithProfile
-  }>>(null)
+  const [searchResults, setSearchResults] = useState<null | TicketWithProfile[]>(null)
 
   // Restore filters from storage if URL is empty
   useEffect(() => {
@@ -245,23 +241,8 @@ export function TicketList() {
         .not('title', 'like', 'template:%')
 
       if (tickets) {
-        // Create a Map to ensure unique tickets by ID
-        const uniqueResults = new Map<string, { id: string; similarity: number; ticket: TicketWithProfile }>()
-        
-        // Keep only the highest similarity match for each ticket
-        data.tickets.forEach((result: { id: string; similarity: number }) => {
-          const ticket = tickets.find((t: TicketWithProfile) => t.id === result.id)
-          if (!ticket) return
-          
-          const existing = uniqueResults.get(result.id)
-          if (!existing || result.similarity > existing.similarity) {
-            uniqueResults.set(result.id, { id: result.id, similarity: result.similarity, ticket })
-          }
-        })
-
-        const fullResults = Array.from(uniqueResults.values())
-        setSearchResults(fullResults)
-        setTickets(fullResults.map((r: { ticket: TicketWithProfile }) => r.ticket))
+        setSearchResults(tickets)
+        setTickets(tickets)
       } else {
         setSearchResults([])
         setTickets([])
@@ -282,7 +263,7 @@ export function TicketList() {
 
       // If we have search results, use those tickets directly and skip other loading
       if (searchResults) {
-        const searchTickets = searchResults.map(r => r.ticket)
+        const searchTickets = searchResults.map(r => r)
         setTickets(searchTickets)
         setLoading(false)
         return
@@ -709,11 +690,6 @@ export function TicketList() {
                 <div className="p-4">
                   <div className="text-lg font-medium text-primary hover:text-primary/90 mb-1">
                     {ticket.title}
-                    {searchResults?.find(r => r.id === ticket.id) && (
-                      <span className="ml-2 text-sm text-primary/70">
-                        {Math.round(searchResults.find(r => r.id === ticket.id)!.similarity * 100)}% match
-                      </span>
-                    )}
                   </div>
                   <div className="text-sm text-primary/70 flex gap-4">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${

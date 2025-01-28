@@ -249,12 +249,6 @@ export default function Help() {
                       <span>by {usernames[article.created_by] || 'unknown'}</span>
                       <span>•</span>
                       <span>{new Date(article.created_at).toLocaleDateString()}</span>
-                      {article.similarity !== undefined && (
-                        <>
-                          <span>•</span>
-                          <span className="text-blue-500">{Math.round(article.similarity * 100)}% match</span>
-                        </>
-                      )}
                     </div>
                   </Link>
                 ))

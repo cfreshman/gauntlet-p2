@@ -9,7 +9,6 @@ interface SimilarTicketsProps {
 }
 
 interface SimilarTicket extends Ticket {
-  similarity: number
 }
 
 export function SimilarTickets({ ticketId, excludeTemplates = true }: SimilarTicketsProps) {
@@ -86,9 +85,6 @@ export function SimilarTickets({ ticketId, excludeTemplates = true }: SimilarTic
         >
           <div className="text-sm font-medium text-primary">
             {ticket.title}
-            <span className="ml-2 text-xs text-primary/70">
-              {Math.round(ticket.similarity * 100)}% match
-            </span>
           </div>
           <div className="text-xs text-primary/70 flex gap-2 mt-1">
             <span className={`px-1.5 py-0.5 rounded-full ${

@@ -20,7 +20,6 @@ interface Article {
   created_at: string;
   created_by: string;
   version: number;
-  similarity?: number;
 }
 
 export function ArticleList() {
@@ -155,23 +154,13 @@ export function ArticleList() {
                       <p className="text-sm text-primary/70">{article.summary}</p>
                     )}
                     <div className="mt-2 flex items-center gap-2 text-xs text-primary/50">
-                      <span>v{article.version}</span>
-                      <span>•</span>
                       <span>by {usernames[article.created_by] || 'unknown'}</span>
                       <span>•</span>
-                      <span>
-                        {new Date(article.created_at).toLocaleDateString()}
-                      </span>
+                      <span>{new Date(article.created_at).toLocaleDateString()}</span>
                       {article.published && (
                         <>
                           <span>•</span>
                           <span className="text-green-500">published</span>
-                        </>
-                      )}
-                      {article.similarity !== undefined && (
-                        <>
-                          <span>•</span>
-                          <span className="text-blue-500">{Math.round(article.similarity * 100)}% match</span>
                         </>
                       )}
                     </div>
