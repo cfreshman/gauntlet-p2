@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useFieldDefinitions } from '../../lib/hooks/useFieldDefinitions'
-import { useAuth } from '../../lib/hooks/useAuth'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Switch } from '../../components/ui/switch'
@@ -15,7 +14,6 @@ export function FieldManager({ teamId }: FieldManagerProps) {
   const [type, setType] = useState<'text' | 'number' | 'boolean' | 'date'>('text')
   const [required, setRequired] = useState(false)
   const [error, setError] = useState('')
-  const { user } = useAuth()
 
   const {
     fields,

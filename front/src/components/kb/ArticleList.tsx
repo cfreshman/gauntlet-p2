@@ -6,11 +6,6 @@ import { useUsernames } from "../../lib/hooks/useUsernames";
 import { Input } from "../ui/input";
 import { useDebounce } from "../../lib/hooks/useDebounce";
 
-interface SearchResult {
-  id: string;
-  similarity: number;
-}
-
 interface Article {
   id: string;
   title: string;
@@ -20,6 +15,7 @@ interface Article {
   created_at: string;
   created_by: string;
   version: number;
+  similarity?: number;
 }
 
 export function ArticleList() {

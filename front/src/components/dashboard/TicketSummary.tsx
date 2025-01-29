@@ -39,7 +39,7 @@ export function TicketSummary() {
         // Filter based on role
         if (profile?.role === 'manager' && team?.id) {
           query.eq('team_id', team.id)
-        } else {
+        } else if (user?.id) {
           query.eq('assigned_to', user.id)
         }
 
@@ -53,7 +53,7 @@ export function TicketSummary() {
           return
         }
 
-        const cacheKey = `ticket-summary-${user.id}`
+        const cacheKey = `ticket-summary-${user?.id}`
         const cached = localStorage.getItem(cacheKey)
 
         if (cached) {
@@ -72,7 +72,7 @@ export function TicketSummary() {
         // Get fresh summary from edge function
         const { data, error } = await supabase.functions.invoke('generate-ticket-summary', {
           body: { 
-            user_id: user.id,
+            user_id: user?.id,
             ticket_ids: ticketIds
           }
         })
