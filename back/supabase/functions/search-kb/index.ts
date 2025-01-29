@@ -49,37 +49,6 @@ serve(async (req) => {
       throw countError
     }
 
-    console.log('Total embeddings in database:', count)
-
-    // List all articles to verify embeddings
-    const { data: articles, error: listError } = await supabase
-      .from('kb_articles')
-      .select('id, title')
-      
-    if (listError) {
-      console.error('Error listing articles:', listError)
-      throw listError
-    }
-
-    console.log('Articles in database:', articles)
-
-    // Check embeddings for each article
-    const { data: embeddings, error: embeddingsError } = await supabase
-      .from('kb_embeddings')
-      .select('article_id')
-
-    if (embeddingsError) {
-      console.error('Error checking article embeddings:', embeddingsError)
-      throw embeddingsError
-    }
-
-    const articleIds = new Set(embeddings?.map(e => e.article_id))
-    const missingEmbeddings = articles?.filter(a => !articleIds.has(a.id))
-    
-    if (missingEmbeddings?.length) {
-      console.log('Articles missing embeddings:', missingEmbeddings)
-    }
-
     // Generate embedding for search query
     const openai = new OpenAI({
       apiKey: Deno.env.get('OPENAI_API_KEY') ?? ''
@@ -87,8 +56,6 @@ serve(async (req) => {
 
     // Structure query like articles
     const searchText = `Title: Search query\nContent: ${query}\nKeywords: ${query.toLowerCase().split(/\s+/).join(' ')}`
-    
-    console.log('Generating embedding for structured query:', searchText)
 
     const response = await openai.embeddings.create({
       model: 'text-embedding-ada-002',
@@ -98,8 +65,6 @@ serve(async (req) => {
     if (!response.data[0]?.embedding) {
       throw new Error('No embedding generated')
     }
-
-    console.log('Generated embedding for query')
 
     // Search for similar articles with lower threshold
     const { data: searchResults, error: searchError } = await supabase
@@ -115,8 +80,6 @@ serve(async (req) => {
       console.error('Search error:', searchError)
       throw searchError
     }
-
-    console.log('Search results:', searchResults)
 
     return new Response(
       JSON.stringify({ articles: searchResults }),
