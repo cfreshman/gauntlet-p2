@@ -23,7 +23,10 @@ export function TicketSummary() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!user?.id || !profile || !team) return
+    if (!user?.id || !profile || !team) {
+      setLoading(false)
+      return
+    }
 
     async function fetchSummary() {
       try {
@@ -97,6 +100,9 @@ export function TicketSummary() {
 
     fetchSummary()
   }, [user?.id, profile?.role, team?.id])
+
+  // Return null if no team (after hooks)
+  if (!team) return null
 
   if (error) {
     return (

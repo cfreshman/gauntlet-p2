@@ -65,6 +65,19 @@ serve(async (req) => {
       baseUrl: Deno.env.get('LANGFUSE_HOST') ?? 'https://cloud.langfuse.com'
     })
 
+    // Start tracing the entire function
+    const trace = langfuse.trace({
+      id: `ticket-${ticket_id}`,
+      name: 'auto-process-ticket',
+      input: { ticket_id }
+    })
+
+    // Create span for data fetching
+    const dataSpan = trace.span({
+      name: 'fetch-data',
+      input: { ticket_id }
+    })
+
     // Get ticket data
     console.log('Fetching ticket data...')
     const { data: ticket, error: ticketError } = await supabase
@@ -148,39 +161,42 @@ serve(async (req) => {
 
     // Get full ticket data for each similar result
     const similarTickets = await Promise.all(
-      (similarResults.data?.tickets || []).map(async (result) => {
-        try {
-          const { data: ticketData, error: ticketError } = await supabase
-            .from('tickets')
-            .select(`
-              *,
-              ticket_tag_links!left(ticket_tags(name)),
-              ticket_field_values!left(value, ticket_field_definitions!inner(name)),
-              ticket_comments!left(content, internal, created_by)
-            `)
-            .eq('id', result.id)
-            .single()
+      (similarResults.data?.tickets || [])
+        .filter(result => result.id !== ticket_id) // Filter out current ticket
+        .map(async (result) => {
+          try {
+            const { data: ticketData, error: ticketError } = await supabase
+              .from('tickets')
+              .select(`
+                *,
+                ticket_tag_links!left(ticket_tags(name)),
+                ticket_field_values!left(value, ticket_field_definitions!inner(name)),
+                ticket_comments!left(content, internal, created_by)
+              `)
+              .eq('id', result.id)
+              .single()
 
-          if (ticketError) {
-            console.error('Error fetching ticket data:', ticketError)
+            if (ticketError) {
+              console.error('Error fetching ticket data:', ticketError)
+              return result
+            }
+
+            return {
+              ...ticketData,
+              similarity: result.similarity
+            }
+          } catch (err) {
+            console.error('Error processing similar ticket:', err)
             return result
           }
-
-          return {
-            ...ticketData,
-            similarity: result.similarity
-          }
-        } catch (err) {
-          console.error('Error processing similar ticket:', err)
-          return result
-        }
-      })
+        })
     )
 
-    // Create trace now that we have all the initial data
-    const trace = langfuse.trace({
-      id: `ticket-${ticket_id}`,
-      name: 'auto-process-ticket',
+    // After all data is fetched
+    dataSpan.end()
+
+    // Update trace with full context
+    await trace.update({
       input: {
         ticket: {
           id: ticket_id,
@@ -291,7 +307,7 @@ serve(async (req) => {
    - Keep all comments concise
    - When referencing articles:
      * VALIDATION REQUIRED: Check article.Status === 'published'
-     * If article.Status !== 'published', DO NOT reference it in public comments
+     * If article.Status !== 'published', DO NOT reference the article
      * Explain relevance to current issue
      * Adapt solutions to customer context
    - When referencing tickets:
@@ -299,6 +315,11 @@ serve(async (req) => {
      * Focus on solution patterns
      * Never expose customer details
      * No customer-to-ticket linking
+
+When evaluating custom fields:
+- For boolean fields, only consider them true if the value is explicitly "true"
+- For other field types, evaluate the actual value provided
+- The presence of a field with value "false" should be treated as false
 
 CRITICAL VALIDATION:
 - Before adding any article reference to a public comment:
@@ -345,7 +366,50 @@ add_comment: {
 debug_log: {
   type: 'debug_log',
   message: string (explain choices)
-}`
+}
+
+Current ticket:
+Title: ${ticket.title}
+Description: ${ticket.description}
+Status: ${ticket.status}
+Priority: ${ticket.priority}
+Team: ${ticket.team_id ? teamsMap.get(ticket.team_id)?.name : 'unassigned'}
+Assigned to: ${ticket.assigned_to ? staffMap.get(ticket.assigned_to)?.username : 'unassigned'}
+Tags: ${ticket.ticket_tag_links?.map((link: any) => link.ticket_tags.name).join(', ') || 'none'}
+Custom Fields:
+${ticket.ticket_field_values?.map((field: any) => `${field.ticket_field_definitions.name}: ${field.value}`).join('\n') || 'none'}
+
+Relevant KB Articles:
+${articles.map((a, i) => `
+${i + 1}. ${a.title} (${Math.round(a.similarity * 100)}% match)
+${a.content}
+`).join('\n')}
+
+Similar Tickets:
+${similarTickets.map((t, i) => `
+${i + 1}. ${t.title} (${Math.round(t.similarity * 100)}% match)
+Description: ${t.description}
+Status: ${t.status}
+Custom Fields:
+${t.ticket_field_values?.map((field: any) => `${field.ticket_field_definitions.name}: ${field.value}`).join('\n') || 'none'}
+Comments:
+${t.ticket_comments?.map((c: any) => {
+  const commenter = staffMap.get(c.created_by)
+  const isCustomer = c.created_by === t.created_by
+  return `${c.internal ? '[Internal] ' : ''}- [${isCustomer ? 'customer' : (commenter?.username || 'unknown')} (${isCustomer ? 'customer' : (commenter?.role || 'unknown')})] ${c.content}`
+}).join('\n') || 'none'}
+`).join('\n')}
+
+Available Teams:
+${Array.from(teamsMap.values()).map(team => `
+- ${team.name} (id: ${team.id})
+  Members: ${teamMembershipsByTeam.get(team.id)?.map(uid => {
+    const staff = staffMap.get(uid)
+    if (!staff) return null
+    return `${staff.username} (${skillsByUser.get(uid)?.join(', ') || 'no skills'})`
+  }).filter(Boolean).join(', ')}
+`).join('')}
+`
     }
 
     const userMessage = {
@@ -381,7 +445,11 @@ Tags: ${t.ticket_tag_links?.map((link: any) => link.ticket_tags.name).join(', ')
 Custom Fields:
 ${t.ticket_field_values?.map((field: any) => `${field.ticket_field_definitions.name}: ${field.value}`).join('\n') || 'none'}
 Comments:
-${t.ticket_comments?.filter((c: any) => !c.internal).map((c: any) => `- ${c.content}`).join('\n') || 'none'}
+${t.ticket_comments?.map((c: any) => {
+  const commenter = staffMap.get(c.created_by)
+  const isCustomer = c.created_by === t.created_by
+  return `${c.internal ? '[Internal] ' : ''}- [${isCustomer ? 'customer' : (commenter?.username || 'unknown')} (${isCustomer ? 'customer' : (commenter?.role || 'unknown')})] ${c.content}`
+}).join('\n') || 'none'}
 Match: ${Math.round(t.similarity * 100)}%`).join('\n\n') : 'No similar tickets found'}
 
 Teams:
@@ -418,11 +486,184 @@ Skills: ${skills.length ? skills.join(', ') : 'none'}`
     // Get AI response
     console.log('Sending prompt to LLM:', JSON.stringify([prompt, userMessage], null, 2))
     
+    const llmSpan = trace.span({
+      name: 'llm',
+      input: {
+        messages: [prompt, userMessage]
+      }
+    })
+
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
-      messages: [prompt, userMessage],
-      temperature: 0,
-      response_format: { type: "json_object" }
+      messages: [
+        {
+          role: 'system',
+          content: `Goal: return a JSON array of these actions:
+({ 
+  type: 'set_assignee',
+  team_id: string (team UUID),
+  staff_id: string (staff UUID)
+} | {
+  type: 'set_status',
+  status: 'resolved' (only valid value)
+} | {
+  type: 'add_comment',
+  content: string (comment text),
+  internal: boolean,
+  references: Array of {
+    type: 'article' | 'ticket',
+    id: string (UUID)
+  }
+} | {
+  type: 'debug_log',
+  message: string (explain choices)
+})[]
+          
+Process tickets in this order:
+
+1. ALWAYS assign to a team member (required):
+   - First try matching skills (any role)
+   - Then try managers in relevant teams
+   - Finally any available manager
+   - Never skip assignment
+
+2. ANALYZE SIMILAR TICKETS:
+   - Review past tickets in the list
+   - Study their solutions and outcomes
+   - Note common patterns in successful resolutions
+   - Use these insights for internal context
+   - Never reference similar tickets in public comments
+
+3. Then set the status to resolved ONLY if:
+   - A PUBLISHED KB article (Status: published) fully solves issue, OR
+   - You can write a complete solution in a public comment
+   - Never reference tickets in public comments
+   
+4. Add comments based on these strict rules:
+   - Public comments:
+     * ONLY reference articles where Status: published
+     * NEVER reference articles where Status: draft
+     * Keep focused on direct solutions
+     * Never mention other tickets
+     * Double check article.Status before referencing
+   - Internal comments only:
+     * ALWAYS add internal comment if similar tickets found
+     * Note resolution patterns and insights
+     * Can reference draft articles
+     * Can reference similar tickets
+     * Use for staff context/patterns
+   - Keep all comments concise
+   - When referencing articles:
+     * VALIDATION REQUIRED: Check article.Status === 'published'
+     * If article.Status !== 'published', DO NOT reference the article
+     * Explain relevance to current issue
+     * Adapt solutions to customer context
+   - When referencing tickets:
+     * ONLY in internal comments
+     * Focus on solution patterns
+     * Never expose customer details
+     * No customer-to-ticket linking
+
+When evaluating custom fields:
+- For boolean fields, only consider them true if the value is explicitly "true"
+- For other field types, evaluate the actual value provided
+- The presence of a field with value "false" should be treated as false
+
+CRITICAL VALIDATION:
+- Before adding any article reference to a public comment:
+  1. Find the article in the KB Articles list
+  2. Check if Status: published (exact match required)
+  3. If Status is not 'published', DO NOT reference the article
+  4. If unsure about Status, DO NOT reference the article
+
+SIMILAR TICKETS HANDLING:
+- For each relevant ticket:
+  - Review resolution approach
+  - Note successful patterns
+  - Focus on solution patterns
+  - Never expose in public comments
+  - DO NOT REFER TO "internal tickets" without LINKING TO THEM
+
+OTHER NOTES:
+- don't reference IDs in actual comments
+- try to use your own logical reasoning to solve the problem
+- you can leave multiple comments, e.g. a public and internal comment
+- don't reference any articles or tickets without actually linking them
+- DO NOT RESOLVE A TICKET UNLESS YOU'VE REFERENCED A PUBLISHED ARTICLE WHICH SOLVES IT, OR THE ENTIRE SOLUTION IN TEXT. if you can't do that, just leave in 'new' and assign to a relevant staff member as described previously.
+- IF THERE *IS* A PUBLISHED ARTICLE THAT SOLVES THE TICKET, *RESOLVE THE TICKET*. do not just reference the article in a comment. literally resolve the ticket. include the article in a public comment.
+- DO NOT resolve with UNRELATED ARTICLES. think about how the article content directly solves the ticket.
+- if you can resolve the ticket without a published article, do it, but don't pretend that some article solved it.
+
+be absolutely fucking sure the references you're using to resolve a ticket actually resolve it - the worst thing you can do is incorrectly resolve a ticket.
+
+Current ticket:
+Title: ${ticket.title}
+Description: ${ticket.description}
+Status: ${ticket.status}
+Priority: ${ticket.priority}
+Team: ${ticket.team_id ? teamsMap.get(ticket.team_id)?.name : 'unassigned'}
+Assigned to: ${ticket.assigned_to ? staffMap.get(ticket.assigned_to)?.username : 'unassigned'}
+Tags: ${ticket.ticket_tag_links?.map((link: any) => link.ticket_tags.name).join(', ') || 'none'}
+Custom Fields:
+${ticket.ticket_field_values?.map((field: any) => `${field.ticket_field_definitions.name}: ${field.value}`).join('\n') || 'none'}
+
+Relevant KB Articles:
+${articles.map((a, i) => `
+${i + 1}. ${a.title}
+${a.content}
+`).join('\n')}
+
+Similar Tickets:
+${similarTickets.map((t, i) => `
+${i + 1}. ${t.title}
+Description: ${t.description}
+Status: ${t.status}
+Custom Fields:
+${t.ticket_field_values?.map((field: any) => `${field.ticket_field_definitions.name}: ${field.value}`).join('\n') || 'none'}
+Comments:
+${t.ticket_comments?.map((c: any) => {
+  const commenter = staffMap.get(c.created_by)
+  const isCustomer = c.created_by === t.created_by
+  return `${c.internal ? '[Internal] ' : ''}- [${isCustomer ? 'customer' : (commenter?.username || 'unknown')} (${isCustomer ? 'customer' : (commenter?.role || 'unknown')})] ${c.content}`
+}).join('\n') || 'none'}
+`).join('\n')}
+
+Available Teams:
+${Array.from(teamsMap.values()).map(team => `
+- ${team.name} (id: ${team.id})
+  Members: ${teamMembershipsByTeam.get(team.id)?.map(uid => {
+    const staff = staffMap.get(uid)
+    if (!staff) return null
+    return `${staff.username} (${skillsByUser.get(uid)?.join(', ') || 'no skills'})`
+  }).filter(Boolean).join(', ')}
+`).join('')}
+
+
+Now,
+Return a JSON array of these actions:
+({ 
+  type: 'set_assignee',
+  team_id: string (team UUID),
+  staff_id: string (staff UUID)
+} | {
+  type: 'set_status',
+  status: 'resolved' (only valid value)
+} | {
+  type: 'add_comment',
+  content: string (comment text),
+  internal: boolean,
+  references: Array of {
+    type: 'article' | 'ticket',
+    id: string (UUID)
+  }
+} | {
+  type: 'debug_log',
+  message: string (explain choices)
+})[]`
+        },
+        userMessage
+      ],
+      response_format: { type: 'json_object' }
     })
 
     let response: AutoResponse
@@ -433,6 +674,8 @@ Skills: ${skills.length ? skills.join(', ') : 'none'}`
       console.error('Failed to parse AI response:', e)
       response = { actions: [] }
     }
+
+    llmSpan.end()
 
     // Log prompt and completion
     const generation = trace.generation({
@@ -448,7 +691,7 @@ Skills: ${skills.length ? skills.join(', ') : 'none'}`
     generation.end()
 
     // Execute actions
-    const execution = trace.span({
+    const actionsSpan = trace.span({
       name: 'execute-actions',
       input: response
     })
@@ -524,7 +767,7 @@ Skills: ${skills.length ? skills.join(', ') : 'none'}`
       }
     }
 
-    execution.end()
+    actionsSpan.end()
     await trace.update({ 
       status: 'success',
       output: {
